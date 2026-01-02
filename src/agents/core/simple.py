@@ -12,7 +12,6 @@ from typing import List, Optional
 
 from agents.core.base import BaseAgent
 from agents.core.mcp_discovery import MCPDiscovery
-
 from agents.core.mcp_servers import MCPServer
 from agents.core.tool_executor import ToolExecutor
 from agents.providers.factory import ProviderFactory
@@ -292,4 +291,3 @@ class SimpleAgent(BaseAgent):
         else:
             self.history.add_message(recovery_response)
             return recovery_response
-
