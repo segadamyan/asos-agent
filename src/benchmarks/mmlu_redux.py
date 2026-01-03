@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from agents.core.simple import SimpleAgent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
 from agents.utils.logs.config import logger
-from orchestration import MathAgent, Orchestrator
+from orchestration import CodeAgent, MathAgent, Orchestrator, ScienceAgent
 
 
 class MMLUQuestion(BaseModel):
@@ -419,7 +419,7 @@ async def run_benchmark_with_orchestrator(
 
 
 async def main(
-    max_questions,
+    max_questions: Optional[int] = None,
     subjects: Optional[List[str]] = None,
     max_questions_per_subject: Optional[int] = None,
     dataset_version: str = "2.0",
@@ -467,7 +467,6 @@ if __name__ == "__main__":
     # Run with orchestrator (recommended)
     asyncio.run(
         run_benchmark_with_orchestrator(
-            max_questions=100,  # Limit for testing
-            subjects=["college_mathematics", "high_school_mathematics"],  # Specific subjects
+            # subjects=["college_mathematics", "high_school_mathematics"],  # Specific subjects
         )
     )
