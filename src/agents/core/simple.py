@@ -11,8 +11,8 @@ import asyncio
 from typing import List, Optional
 
 from agents.core.base import BaseAgent
-from agents.core.mcp_discovery import MCPDiscovery
-from agents.core.mcp_servers import MCPServer
+# from agents.core.mcp_discovery import MCPDiscovery
+# from agents.core.mcp_servers import MCPServer
 from agents.core.tool_executor import ToolExecutor
 from agents.providers.factory import ProviderFactory
 from agents.providers.models.base import (
@@ -81,23 +81,23 @@ class SimpleAgent(BaseAgent):
         self._invoker = ToolInvoker(self._tools)
         self.tool_executor = ToolExecutor(self._invoker, self.name)
 
-    async def add_mcp_servers(self, mcp_servers: List[MCPServer]) -> None:
-        """Add MCP servers and discover their tools"""
-        self.mcp_servers.extend(mcp_servers)
+    # async def add_mcp_servers(self, mcp_servers: List[MCPServer]) -> None:
+    #     """Add MCP servers and discover their tools"""
+    #     self.mcp_servers.extend(mcp_servers)
 
-        mcp_discovery = MCPDiscovery()
-        try:
-            mcp_tools = await mcp_discovery.discover(mcp_servers)
-            self._tools.extend(mcp_tools)
+    #     mcp_discovery = MCPDiscovery()
+    #     try:
+    #         mcp_tools = await mcp_discovery.discover(mcp_servers)
+    #         self._tools.extend(mcp_tools)
 
-            self._invoker = ToolInvoker(self._tools)
-            self.tool_executor = ToolExecutor(self._invoker, self.name)
+    #         self._invoker = ToolInvoker(self._tools)
+    #         self.tool_executor = ToolExecutor(self._invoker, self.name)
 
-        except Exception as exc:
-            logger.exception("Failed to discover MCP tools", exc_info=exc)
-            raise
-        finally:
-            await mcp_discovery.cleanup()
+    #     except Exception as exc:
+    #         logger.exception("Failed to discover MCP tools", exc_info=exc)
+    #         raise
+    #     finally:
+    #         await mcp_discovery.cleanup()
 
     async def _create_provider(self):
         """Create provider instance"""
