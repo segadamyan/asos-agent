@@ -10,9 +10,11 @@ Paper: https://arxiv.org/abs/2406.04127
 """
 
 import asyncio
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from datasets import load_dataset
@@ -21,7 +23,7 @@ from pydantic import BaseModel
 from agents.core.simple import SimpleAgent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
 from agents.utils.logs.config import logger
-from orchestration import CodeAgent, MathAgent, Orchestrator, ScienceAgent
+from orchestration import BusinessLawAgent, CodeAgent, MathAgent, Orchestrator, ScienceAgent
 
 
 class MMLUQuestion(BaseModel):
@@ -224,11 +226,79 @@ Answer:"""
         logger.warning(f"Could not extract answer from response: {response[:100]}")
         return -1
 
+    async def _evaluate_question(
+        self,
+        agent: SimpleAgent,
+        question: MMLUQuestion,
+        question_num: int,
+        total_questions: int,
+        gbs: Optional[GenerationBehaviorSettings] = None,
+    ) -> MMLUResult:
+        """Evaluate a single question
+
+        Args:
+            agent: The SimpleAgent to evaluate
+            question: The question to evaluate
+            question_num: Question number (1-indexed for logging)
+            total_questions: Total number of questions being evaluated
+            gbs: Optional generation behavior settings
+
+        Returns:
+            MMLUResult for this question
+        """
+        logger.info(f"Evaluating question {question_num}/{total_questions} - Subject: {question.subject}")
+
+        prompt = self._format_question(question)
+
+        try:
+            # Fork agent to avoid history contamination
+            eval_agent = await agent.fork(keep_history=False)
+            response = await eval_agent.answer_to(prompt, gbs)
+
+            # Extract predicted answer
+            predicted_idx = self._extract_answer(response.content)
+            predicted_text = question.choices[predicted_idx] if 0 <= predicted_idx < 4 else "INVALID"
+
+            # Use correct_answer if available, otherwise use answer
+            correct_idx = question.correct_answer if question.correct_answer is not None else question.answer
+
+            is_correct = predicted_idx == correct_idx
+
+            result = MMLUResult(
+                question=question,
+                predicted_answer=predicted_idx,
+                predicted_text=predicted_text,
+                is_correct=is_correct,
+                response_message=response.content,
+            )
+
+            logger.info(
+                f"Question {question_num}: {'✓ Correct' if is_correct else '✗ Incorrect'} "
+                f"(Predicted: {chr(65 + predicted_idx) if predicted_idx >= 0 else 'N/A'}, "
+                f"Correct: {chr(65 + correct_idx)})"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error evaluating question {question_num}: {e}")
+            return MMLUResult(
+                question=question,
+                predicted_answer=-1,
+                predicted_text="ERROR",
+                is_correct=False,
+                response_message=str(e),
+            )
+
     async def evaluate_agent(
         self,
         agent: SimpleAgent,
         gbs: Optional[GenerationBehaviorSettings] = None,
         max_questions: Optional[int] = None,
+        parallel: bool = False,
+        max_concurrent: int = 10,
+        save_results: bool = False,
+        output_path: Optional[str] = None,
     ) -> BenchmarkResults:
         """
         Evaluate an agent on the loaded questions
@@ -237,6 +307,12 @@ Answer:"""
             agent: The SimpleAgent to evaluate
             gbs: Optional generation behavior settings
             max_questions: Maximum total questions to evaluate (for quick testing)
+            parallel: If True, evaluate questions in parallel using asyncio.gather().
+                     If False (default), evaluate sequentially to avoid rate limits.
+            max_concurrent: Maximum number of concurrent requests when parallel=True.
+                           Default is 10. Adjust based on your API rate limits.
+            save_results: If True, automatically save results to JSON file
+            output_path: Custom path for JSON output (only used if save_results=True)
 
         Returns:
             BenchmarkResults containing overall and per-subject accuracy
@@ -245,57 +321,41 @@ Answer:"""
             self.load_dataset()
 
         questions_to_eval = self.questions[:max_questions] if max_questions else self.questions
-        results: List[MMLUResult] = []
 
-        logger.info(f"Starting evaluation on {len(questions_to_eval)} questions...")
+        logger.info(
+            f"Starting evaluation on {len(questions_to_eval)} questions..."
+            f" (mode: {'parallel' if parallel else 'sequential'}"
+            f"{f', max_concurrent: {max_concurrent}' if parallel else ''})"
+        )
 
-        for i, question in enumerate(questions_to_eval):
-            logger.info(f"Evaluating question {i + 1}/{len(questions_to_eval)} - Subject: {question.subject}")
+        if parallel:
+            semaphore = asyncio.Semaphore(max_concurrent)
 
-            # Format and ask the question
-            prompt = self._format_question(question)
-
-            try:
-                # Fork agent to avoid history contamination
-                eval_agent = await agent.fork(keep_history=False)
-                response = await eval_agent.answer_to(prompt, gbs)
-
-                # Extract predicted answer
-                predicted_idx = self._extract_answer(response.content)
-                predicted_text = question.choices[predicted_idx] if 0 <= predicted_idx < 4 else "INVALID"
-
-                # Use correct_answer if available, otherwise use answer
-                correct_idx = question.correct_answer if question.correct_answer is not None else question.answer
-
-                is_correct = predicted_idx == correct_idx
-
-                result = MMLUResult(
-                    question=question,
-                    predicted_answer=predicted_idx,
-                    predicted_text=predicted_text,
-                    is_correct=is_correct,
-                    response_message=response.content,
-                )
-
-                results.append(result)
-
-                logger.info(
-                    f"Question {i + 1}: {'✓ Correct' if is_correct else '✗ Incorrect'} "
-                    f"(Predicted: {chr(65 + predicted_idx) if predicted_idx >= 0 else 'N/A'}, "
-                    f"Correct: {chr(65 + correct_idx)})"
-                )
-
-            except Exception as e:
-                logger.error(f"Error evaluating question {i + 1}: {e}")
-                results.append(
-                    MMLUResult(
+            async def evaluate_with_semaphore(question, question_num):
+                async with semaphore:
+                    return await self._evaluate_question(
+                        agent=agent,
                         question=question,
-                        predicted_answer=-1,
-                        predicted_text="ERROR",
-                        is_correct=False,
-                        response_message=str(e),
+                        question_num=question_num,
+                        total_questions=len(questions_to_eval),
+                        gbs=gbs,
                     )
+
+            tasks = [evaluate_with_semaphore(question, i + 1) for i, question in enumerate(questions_to_eval)]
+            results = await asyncio.gather(*tasks)
+            results = list(results)  # Convert tuple to list
+        else:
+            # Sequential evaluation (default, safer for rate limits)
+            results: List[MMLUResult] = []
+            for i, question in enumerate(questions_to_eval):
+                result = await self._evaluate_question(
+                    agent=agent,
+                    question=question,
+                    question_num=i + 1,
+                    total_questions=len(questions_to_eval),
+                    gbs=gbs,
                 )
+                results.append(result)
 
         # Calculate overall metrics
         total = len(results)
@@ -330,7 +390,7 @@ Answer:"""
         for error_type in by_error:
             by_error[error_type]["accuracy"] = by_error[error_type]["correct"] / by_error[error_type]["total"]
 
-        return BenchmarkResults(
+        benchmark_results = BenchmarkResults(
             total_questions=total,
             correct_answers=correct,
             accuracy=accuracy,
@@ -338,6 +398,12 @@ Answer:"""
             results_by_error_type=by_error,
             individual_results=results,
         )
+
+        # Save results to JSON if requested
+        if save_results:
+            self.save_results_to_json(benchmark_results, output_path)
+
+        return benchmark_results
 
     def print_results(self, results: BenchmarkResults):
         """Pretty print the benchmark results"""
@@ -360,12 +426,71 @@ Answer:"""
 
         print("\n" + "=" * 80)
 
+    def save_results_to_json(self, results: BenchmarkResults, output_path: Optional[str] = None):
+        """
+        Save benchmark results to a JSON file for later analysis
+
+        Args:
+            results: The BenchmarkResults to save
+            output_path: Path to save the JSON file. If None, generates a timestamped filename.
+        """
+        if output_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"mmlu_redux_results_{timestamp}.json"
+
+        # Convert results to a serializable format
+        output_data = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "total_questions": results.total_questions,
+                "correct_answers": results.correct_answers,
+                "accuracy": results.accuracy,
+            },
+            "summary": {
+                "by_subject": results.results_by_subject,
+                "by_error_type": results.results_by_error_type,
+            },
+            "individual_results": [
+                {
+                    "question_text": result.question.question,
+                    "choices": result.question.choices,
+                    "subject": result.question.subject,
+                    "error_type": result.question.error_type,
+                    "correct_answer_index": result.question.correct_answer
+                    if result.question.correct_answer is not None
+                    else result.question.answer,
+                    "correct_answer_text": result.question.choices[
+                        result.question.correct_answer
+                        if result.question.correct_answer is not None
+                        else result.question.answer
+                    ],
+                    "predicted_answer_index": result.predicted_answer,
+                    "predicted_answer_text": result.predicted_text,
+                    "full_response": result.response_message,
+                    "is_correct": result.is_correct,
+                }
+                for result in results.individual_results
+            ],
+        }
+
+        # Save to file
+        output_file = Path(output_path)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_file.open("w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Results saved to: {output_file.absolute()}")
+        print(f"\n📄 Results saved to: {output_file.absolute()}")
+
 
 async def run_benchmark_with_orchestrator(
     max_questions: Optional[int] = None,
     max_questions_per_subject: Optional[int] = None,
     subjects: Optional[List[str]] = None,
     dataset_version: str = "2.0",
+    parallel: bool = False,
+    max_concurrent: int = 10,
 ):
     """
     Run MMLU-Redux benchmark using the Orchestrator with registered specialized agents.
@@ -375,6 +500,8 @@ async def run_benchmark_with_orchestrator(
         max_questions_per_subject: Maximum questions per subject
         subjects: List of subjects to evaluate on
         dataset_version: Version of MMLU-Redux to use ("1.0" or "2.0", default: "2.0")
+        parallel: If True, evaluate questions in parallel
+        max_concurrent: Maximum concurrent requests when parallel=True (default: 10)
 
     Returns:
         BenchmarkResults
@@ -398,10 +525,12 @@ async def run_benchmark_with_orchestrator(
     math_agent = MathAgent(name="MMLU-Math-Expert")
     science_agent = ScienceAgent(name="MMLU-Science-Expert")
     code_agent = CodeAgent(name="MMLU-Code-Expert")
+    business_law_agent = BusinessLawAgent(name="MMLU-BusinessLaw-Expert")
 
     orchestrator.register_agent("math", math_agent)
     orchestrator.register_agent("science", science_agent)
     orchestrator.register_agent("code", code_agent)
+    orchestrator.register_agent("business_law", business_law_agent)
 
     logger.info(f"Registered agents: {orchestrator.list_agents()}")
 
@@ -410,7 +539,13 @@ async def run_benchmark_with_orchestrator(
     logger.info(f"Warmup response: {warmup_response.content[:100]}...")
 
     # Run evaluation
-    results = await benchmark.evaluate_agent(orchestrator.agent, max_questions=max_questions)
+    results = await benchmark.evaluate_agent(
+        orchestrator.agent,
+        max_questions=max_questions,
+        parallel=parallel,
+        max_concurrent=max_concurrent,
+        save_results=True,
+    )
 
     # Print results
     benchmark.print_results(results)
@@ -422,10 +557,10 @@ async def main(
     max_questions: Optional[int] = None,
     subjects: Optional[List[str]] = None,
     max_questions_per_subject: Optional[int] = None,
+    parallel: bool = True,
     dataset_version: str = "2.0",
 ):
     """Example usage of MMLU-Redux benchmark"""
-    from datetime import datetime
 
     # Initialize the benchmark (only correct questions)
     benchmark = MMLUReduxBenchmark(
@@ -448,19 +583,34 @@ async def main(
 
     # Run evaluation
     # results = await benchmark.evaluate_agent(agent, max_questions=300)
-    results = await benchmark.evaluate_agent(agent, max_questions=max_questions)
+    results = await benchmark.evaluate_agent(agent, max_questions=max_questions, parallel=parallel, save_results=True)
 
-    # Print results
     benchmark.print_results(results)
 
 
 if __name__ == "__main__":
     # Run with simple agent
     # asyncio.run(main())
+    asyncio.run(
+        main(
+            parallel=True,
+            subjects=[
+                "philosophy",
+                "logical_fallacies",
+                "formal_logic",
+                "high_school_us_history",
+                "high_school_geography",
+                "high_school_macroeconomics",
+                "political_science",
+            ],  # Specific subjects
+        )
+    )
+
+    # Run with orchestrator (recommended)
     # asyncio.run(
-    #     main(
-    #         max_questions=100,  # Limit for testing
-    #         subjects=["college_mathematics", "high_school_mathematics"],  # Specific subjects
+    #     run_benchmark_with_orchestrator(
+    #         parallel=True,
+    #         subjects=["philosophy", "logical_fallacies", "formal_logic", "high_school_us_history", "high_school_geography", "high_school_macroeconomics", "political_science"],  # Specific subjects
     #     )
     # )
 

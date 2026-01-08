@@ -24,10 +24,10 @@ from typing import Dict, List, Optional
 from datasets import load_dataset
 from pydantic import BaseModel
 
-from orchestration import MathAgent, Orchestrator
 from agents.core.simple import SimpleAgent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
 from agents.utils.logs.config import logger
+from orchestration import MathAgent, Orchestrator
 
 
 class HLEQuestion(BaseModel):
@@ -775,7 +775,6 @@ async def run_benchmark_with_orchestrator(
     Returns:
         BenchmarkResults
     """
-
 
     # Initialize the benchmark
     benchmark = HLEBenchmark(
