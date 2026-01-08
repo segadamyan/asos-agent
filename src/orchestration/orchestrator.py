@@ -122,9 +122,16 @@ class Orchestrator:
 
         return ToolDefinition(
             name="delegate_task",
-            description="Delegate tasks to specialized agents. Use this when a task requires domain-specific expertise.",
+            description="""Delegate tasks to specialized expert agents with domain-specific knowledge and tools. 
+Available agent types:
+- 'math': Mathematics expert (calculus, algebra, statistics, geometry, mathematical proofs)
+- 'science': Science expert (physics, chemistry, biology, anatomy, medicine, astronomy)
+- 'code': Computer science expert (programming, algorithms, machine learning, electrical engineering)
+- 'business_law': Business & Law expert (accounting, corporate law, business ethics, econometrics) - Has tools for financial calculations, legal frameworks, and statistical analysis
+
+Use this when a task requires specialized domain knowledge or tools.""",
             args_description={
-                "agent_type": "Type of specialized agent (e.g., 'math' for mathematical problems)",
+                "agent_type": "Type of specialized agent: 'math', 'science', 'code', 'business_law'",
                 "task": "The task or problem to delegate to the specialized agent",
             },
             tool=delegate_task,
