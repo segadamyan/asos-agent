@@ -2,14 +2,17 @@
 Base Expert Agent
 
 Abstract base class for specialized expert agents in the orchestration framework.
+Supports MCP (Model Context Protocol) for dynamic tool discovery.
 """
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
+from agents.core.mcp import MCPDiscovery, MCPServerConfig
 from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
+from agents.tools.base import ToolDefinition
 
 
 class BaseExpertAgent(ABC):
@@ -19,7 +22,9 @@ class BaseExpertAgent(ABC):
     Expert agents are domain-specific agents that can be registered with
     an Orchestrator to handle specialized tasks. Each expert agent wraps
     an Agent with a specialized system prompt and provides a unified
-    interface through the execute() method.
+    interface through the solve() method.
+    
+    Supports MCP for dynamic tool discovery from external servers.
     """
 
     def __init__(
@@ -28,8 +33,10 @@ class BaseExpertAgent(ABC):
         system_prompt: str,
         ip_config: Optional[IntelligenceProviderConfig] = None,
         gbs: Optional[GenerationBehaviorSettings] = None,
-        tools: Optional[list] = None,
+        tools: Optional[List[ToolDefinition]] = None,
         default_temperature: float = 0.3,
+        enable_mcp: bool = False,
+        mcp_server_configs: Optional[List[MCPServerConfig]] = None,
     ):
         """
         Initialize the base expert agent.
@@ -41,26 +48,73 @@ class BaseExpertAgent(ABC):
             gbs: Generation behavior settings
             tools: List of tools available to this agent
             default_temperature: Default temperature for generation (lower for precision)
+            enable_mcp: Whether to enable MCP tool discovery
+            mcp_server_configs: List of MCP server configurations
         """
-        self.name = name
-        self.gbs = gbs or GenerationBehaviorSettings(temperature=default_temperature)
+        self._name = name
+        self._system_prompt = system_prompt
+        self._default_temperature = default_temperature
+        self._gbs = gbs or GenerationBehaviorSettings(temperature=default_temperature)
+        self._tools = tools or []
+        self._mcp_enabled = enable_mcp
+        self._mcp_configs = mcp_server_configs or []
+        self._mcp_discovery: Optional[MCPDiscovery] = None
+        self._initialized = False
 
         # Set default provider if not specified
         if ip_config is None:
             ip_config = IntelligenceProviderConfig(provider_name="openai", version="qwen/qwen3-next-80b-a3b-instruct")
+        self._ip_config = ip_config
 
         # Format system prompt with current date if it contains the placeholder
         if "{current_date}" in system_prompt:
-            system_prompt = system_prompt.format(current_date=datetime.today().strftime("%Y-%m-%d"))
+            self._system_prompt = system_prompt.format(current_date=datetime.today().strftime("%Y-%m-%d"))
 
-        # Create the underlying Agent
+        # Initialize agent (without MCP tools initially)
+        self._init_agent(self._tools)
+
+    def _init_agent(self, tools: List[ToolDefinition]):
+        """Initialize the underlying Agent with tools."""
         self.agent = Agent(
-            name=name,
-            system_prompt=system_prompt,
+            name=self._name,
+            system_prompt=self._system_prompt,
             history=History(),
-            ip_config=ip_config,
-            tools=tools or [],
+            ip_config=self._ip_config,
+            tools=tools,
         )
+
+    async def initialize(self) -> "BaseExpertAgent":
+        """
+        Initialize MCP connections and discover tools.
+        
+        Must be called before using the agent if MCP is enabled.
+        For non-MCP agents, this is a no-op.
+        
+        Returns:
+            self for method chaining
+        """
+        if self._initialized:
+            return self
+
+        all_tools = list(self._tools)  # Start with static tools
+
+        if self._mcp_enabled and self._mcp_configs:
+            self._mcp_discovery = MCPDiscovery()
+            mcp_tools = await self._mcp_discovery.discover(self._mcp_configs)
+            all_tools.extend(mcp_tools)
+
+        # Reinitialize agent with all tools (static + MCP)
+        self._init_agent(all_tools)
+        self._initialized = True
+
+        return self
+
+    async def cleanup(self):
+        """Clean up MCP connections."""
+        if self._mcp_discovery:
+            await self._mcp_discovery.cleanup()
+            self._mcp_discovery = None
+        self._initialized = False
 
     @abstractmethod
     async def solve(self, problem: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
@@ -80,14 +134,48 @@ class BaseExpertAgent(ABC):
         """
         pass
 
+    async def _ensure_initialized(self):
+        """Ensure the agent is initialized (for MCP support)."""
+        if not self._initialized:
+            await self.initialize()
+
     def clear_history(self):
         """Clear the conversation history."""
         self.agent.history.clear()
 
     @property
+    def name(self) -> str:
+        """Get the agent name."""
+        return self._name
+
+    @property
+    def gbs(self) -> GenerationBehaviorSettings:
+        """Get the generation behavior settings."""
+        return self._gbs
+
+    @property
     def history(self) -> History:
         """Get the conversation history."""
         return self.agent.history
+
+    @property
+    def mcp_enabled(self) -> bool:
+        """Check if MCP is enabled."""
+        return self._mcp_enabled
+
+    @property
+    def available_tools(self) -> List[str]:
+        """Get list of available tool names."""
+        if self._mcp_discovery:
+            return self._mcp_discovery.available_tools
+        return [t.name for t in self._tools]
+
+    @property
+    def connected_servers(self) -> List[str]:
+        """Get list of connected MCP server names."""
+        if self._mcp_discovery:
+            return self._mcp_discovery.connected_servers
+        return []
 
     @property
     def description(self) -> str:
@@ -100,4 +188,13 @@ class BaseExpertAgent(ABC):
         Returns:
             A string describing the agent's expertise
         """
-        return f"{self.name}: A specialized expert agent"
+        return f"{self._name}: A specialized expert agent"
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.initialize()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.cleanup()
