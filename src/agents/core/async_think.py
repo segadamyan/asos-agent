@@ -108,7 +108,7 @@ class WorkerPool:
 
         try:
             task_worker = await worker.fork(keep_history=False)
-            result = await task_worker.answer_to(task, gbs)
+            result = await task_worker.ask(task, gbs)
 
             worker_result = WorkerResult(task_id=task_id, result=result.content)
             self.task_results[task_id] = worker_result
@@ -267,22 +267,22 @@ class AsyncThinkAgent(SimpleAgent):
 
         return [fork_tool, join_tool]
 
-    async def answer_to(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None):
+    async def ask(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None):
         """
-        Override answer_to to automatically cleanup resources after completion.
+        Override ask to automatically cleanup resources after completion.
         """
         try:
-            result = await super().answer_to(query, gbs)
+            result = await super().ask(query, gbs)
             return result
         finally:
             await self.shutdown()
 
-    async def answer_to_without_cleanup(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None):
+    async def ask_without_cleanup(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None):
         """
         Answer a query without automatic cleanup. Use this if you want to keep the worker pool active
         for multiple sequential calls. Remember to call shutdown() manually when done.
         """
-        return await super().answer_to(query, gbs)
+        return await super().ask(query, gbs)
 
     async def shutdown(self):
         """Shutdown the agent and clean up resources."""
@@ -333,7 +333,7 @@ if __name__ == "__main__":
         status = await agent.get_worker_pool_status()
         print(f"Worker pool status: {status}")
 
-        response = await agent.answer_to(
+        response = await agent.ask(
             """Please use the fork_task tool to execute multiple tasks in parallel:
             1. Use fork_task with 'What is 2+2?'
             2. Use fork_task with 'What is the capital of France?'

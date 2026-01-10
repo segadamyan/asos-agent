@@ -120,7 +120,7 @@ class SimpleAgent(BaseAgent):
                 logger.error("All providers exhausted")
                 raise first_provider_exception
 
-    async def answer_to(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
+    async def ask(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
         """
         Main method to process a user query and return an AI response.
         Handles provider failover automatically.
@@ -157,11 +157,11 @@ class SimpleAgent(BaseAgent):
 
         return message
 
-    async def answer_to_and_clear_history(
+    async def ask_and_clear_history(
         self, search_query: str, gbs: Optional[GenerationBehaviorSettings] = None
     ) -> str:
         """Answer a query and clear the conversation history"""
-        message = await self.answer_to(search_query, gbs)
+        message = await self.ask(search_query, gbs)
         self.history.clear()
         return message.content
 
@@ -201,7 +201,7 @@ class SimpleAgent(BaseAgent):
     async def fork_exec(self, query: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
         """Fork the agent and execute a query asynchronously"""
         forked_agent = await self.fork()
-        return await forked_agent.answer_to(query, gbs)
+        return await forked_agent.ask(query, gbs)
 
     async def _execute_tools(self, message: Message) -> List:
         """Execute tool calls either in parallel or sequentially based on configuration"""

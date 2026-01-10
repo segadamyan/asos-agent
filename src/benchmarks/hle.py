@@ -502,7 +502,7 @@ Begin your response now:"""
         try:
             # Fork agent to avoid history contamination
             eval_agent = await agent.fork(keep_history=False)
-            response = await eval_agent.answer_to(prompt, gbs)
+            response = await eval_agent.ask(prompt, gbs)
 
             # Extract clean final answer for logging
             extracted_answer = self._extract_final_answer(response.content, question.answer_type, debug=debug)
@@ -836,7 +836,7 @@ async def main(
         ip_config=ip_config,
     )
 
-    print(await agent.answer_to("Hello!"))  # Warm up
+    print(await agent.ask("Hello!"))  # Warm up
 
     results = await benchmark.evaluate_agent(
         agent, max_questions=max_questions, parallel=True, debug=True, save_results=True

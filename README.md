@@ -69,7 +69,7 @@ async def main():
     )
     
     # Ask a question
-    response = await agent.answer_to("What is the capital of France?")
+    response = await agent.ask("What is the capital of France?")
     print(response.content)
 
 asyncio.run(main())
@@ -190,7 +190,7 @@ class CustomExpertAgent(BaseExpertAgent):
     async def solve(self, problem: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
         """Solve a problem in your domain"""
         effective_gbs = gbs or self.gbs
-        return await self.agent.answer_to(problem, gbs=effective_gbs)
+        return await self.agent.ask(problem, gbs=effective_gbs)
     
     @property
     def description(self) -> str:
@@ -384,7 +384,7 @@ agent = SimpleAgent(
     tools=[weather_tool]
 )
 
-response = await agent.answer_to("What's the weather in Paris?")
+response = await agent.ask("What's the weather in Paris?")
 ```
 
 ### Example 3: Benchmark Evaluation
@@ -439,7 +439,7 @@ class SimpleAgent(BaseAgent):
         fallback_ip_configs: Optional[List[IntelligenceProviderConfig]] = None
     )
     
-    async def answer_to(
+    async def ask(
         self,
         prompt: str,
         gbs: Optional[GenerationBehaviorSettings] = None

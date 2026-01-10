@@ -253,7 +253,7 @@ Answer:"""
         try:
             # Fork agent to avoid history contamination
             eval_agent = await agent.fork(keep_history=False)
-            response = await eval_agent.answer_to(prompt, gbs)
+            response = await eval_agent.ask(prompt, gbs)
 
             # Extract predicted answer
             predicted_idx = self._extract_answer(response.content)
@@ -579,7 +579,7 @@ async def main(
         history=History(),
         ip_config=ip_config,
     )
-    print(await agent.answer_to("Hello!"))  # Warm up
+    print(await agent.ask("Hello!"))  # Warm up
 
     # Run evaluation
     # results = await benchmark.evaluate_agent(agent, max_questions=300)

@@ -398,7 +398,7 @@ class BusinessLawAgent(BaseExpertAgent):
         elif gbs.temperature is None:
             gbs.temperature = self._default_temperature
 
-        return await self.agent.answer_to(problem, gbs)
+        return await self.agent.ask(problem, gbs)
 
     async def clear_history(self):
         """Clear the agent's conversation history"""

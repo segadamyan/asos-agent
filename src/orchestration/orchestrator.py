@@ -149,7 +149,7 @@ Use this when a task requires specialized domain knowledge or tools.""",
             Message containing the orchestrator's response
         """
         effective_gbs = gbs or self.gbs
-        return await self.agent.answer_to(query, gbs=effective_gbs)
+        return await self.agent.ask(query, gbs=effective_gbs)
 
     def register_agent(self, agent_type: str, agent):
         """

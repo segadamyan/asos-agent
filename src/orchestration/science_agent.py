@@ -84,7 +84,7 @@ class ScienceAgent(BaseExpertAgent):
             Message containing the scientific response
         """
         effective_gbs = gbs or self.gbs
-        return await self.agent.answer_to(problem, gbs=effective_gbs)
+        return await self.agent.ask(problem, gbs=effective_gbs)
 
     @property
     def description(self) -> str:
