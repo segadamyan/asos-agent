@@ -2,14 +2,14 @@
 Base Expert Agent
 
 Abstract base class for specialized expert agents in the orchestration framework.
-Supports MCP (Model Context Protocol) for dynamic tool discovery.
+Supports MCP (Model Context Protocol) for dynamic tool discovery via the core Agent.
 """
 
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List, Optional
 
-from agents.core.mcp import MCPDiscovery, MCPServerConfig
+from agents.core.mcp import MCPServerConfig
 from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
 from agents.tools.base import ToolDefinition
@@ -24,7 +24,7 @@ class BaseExpertAgent(ABC):
     an Agent with a specialized system prompt and provides a unified
     interface through the solve() method.
     
-    Supports MCP for dynamic tool discovery from external servers.
+    Supports MCP for dynamic tool discovery from external servers (via core Agent).
     """
 
     def __init__(
@@ -58,8 +58,6 @@ class BaseExpertAgent(ABC):
         self._tools = tools or []
         self._mcp_enabled = enable_mcp
         self._mcp_configs = mcp_server_configs or []
-        self._mcp_discovery: Optional[MCPDiscovery] = None
-        self._initialized = False
 
         # Set default provider if not specified
         if ip_config is None:
@@ -70,17 +68,15 @@ class BaseExpertAgent(ABC):
         if "{current_date}" in system_prompt:
             self._system_prompt = system_prompt.format(current_date=datetime.today().strftime("%Y-%m-%d"))
 
-        # Initialize agent (without MCP tools initially)
-        self._init_agent(self._tools)
-
-    def _init_agent(self, tools: List[ToolDefinition]):
-        """Initialize the underlying Agent with tools."""
+        # Initialize agent with MCP support
         self.agent = Agent(
             name=self._name,
             system_prompt=self._system_prompt,
             history=History(),
             ip_config=self._ip_config,
-            tools=tools,
+            tools=self._tools,
+            enable_mcp=self._mcp_enabled,
+            mcp_server_configs=self._mcp_configs,
         )
 
     async def initialize(self) -> "BaseExpertAgent":
@@ -93,28 +89,12 @@ class BaseExpertAgent(ABC):
         Returns:
             self for method chaining
         """
-        if self._initialized:
-            return self
-
-        all_tools = list(self._tools)  # Start with static tools
-
-        if self._mcp_enabled and self._mcp_configs:
-            self._mcp_discovery = MCPDiscovery()
-            mcp_tools = await self._mcp_discovery.discover(self._mcp_configs)
-            all_tools.extend(mcp_tools)
-
-        # Reinitialize agent with all tools (static + MCP)
-        self._init_agent(all_tools)
-        self._initialized = True
-
+        await self.agent.initialize_mcp()
         return self
 
     async def cleanup(self):
         """Clean up MCP connections."""
-        if self._mcp_discovery:
-            await self._mcp_discovery.cleanup()
-            self._mcp_discovery = None
-        self._initialized = False
+        await self.agent.cleanup_mcp()
 
     @abstractmethod
     async def solve(self, problem: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
@@ -136,7 +116,7 @@ class BaseExpertAgent(ABC):
 
     async def _ensure_initialized(self):
         """Ensure the agent is initialized (for MCP support)."""
-        if not self._initialized:
+        if self._mcp_enabled and not self.agent._mcp_initialized:
             await self.initialize()
 
     def clear_history(self):
@@ -161,21 +141,17 @@ class BaseExpertAgent(ABC):
     @property
     def mcp_enabled(self) -> bool:
         """Check if MCP is enabled."""
-        return self._mcp_enabled
+        return self.agent.mcp_enabled
 
     @property
     def available_tools(self) -> List[str]:
         """Get list of available tool names."""
-        if self._mcp_discovery:
-            return self._mcp_discovery.available_tools
-        return [t.name for t in self._tools]
+        return self.agent.available_tools
 
     @property
     def connected_servers(self) -> List[str]:
         """Get list of connected MCP server names."""
-        if self._mcp_discovery:
-            return self._mcp_discovery.connected_servers
-        return []
+        return self.agent.connected_mcp_servers
 
     @property
     def description(self) -> str:
