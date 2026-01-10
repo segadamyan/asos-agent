@@ -20,7 +20,7 @@ from typing import Dict, List, Optional
 from datasets import load_dataset
 from pydantic import BaseModel
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
 from agents.utils.logs.config import logger
 from orchestration import BusinessLawAgent, CodeAgent, MathAgent, Orchestrator, ScienceAgent
@@ -228,7 +228,7 @@ Answer:"""
 
     async def _evaluate_question(
         self,
-        agent: SimpleAgent,
+        agent: Agent,
         question: MMLUQuestion,
         question_num: int,
         total_questions: int,
@@ -237,7 +237,7 @@ Answer:"""
         """Evaluate a single question
 
         Args:
-            agent: The SimpleAgent to evaluate
+            agent: The Agent to evaluate
             question: The question to evaluate
             question_num: Question number (1-indexed for logging)
             total_questions: Total number of questions being evaluated
@@ -292,7 +292,7 @@ Answer:"""
 
     async def evaluate_agent(
         self,
-        agent: SimpleAgent,
+        agent: Agent,
         gbs: Optional[GenerationBehaviorSettings] = None,
         max_questions: Optional[int] = None,
         parallel: bool = False,
@@ -304,7 +304,7 @@ Answer:"""
         Evaluate an agent on the loaded questions
 
         Args:
-            agent: The SimpleAgent to evaluate
+            agent: The Agent to evaluate
             gbs: Optional generation behavior settings
             max_questions: Maximum total questions to evaluate (for quick testing)
             parallel: If True, evaluate questions in parallel using asyncio.gather().
@@ -573,7 +573,7 @@ async def main(
     # Create an agent
     ip_config = IntelligenceProviderConfig(provider_name="openai", version="qwen/qwen3-next-80b-a3b-instruct")
 
-    agent = SimpleAgent(
+    agent = Agent(
         name="MMLU-Evaluator",
         system_prompt=f"You are an expert at answering multiple choice questions. Current date: {datetime.today().strftime('%Y/%m/%d')}",
         history=History(),

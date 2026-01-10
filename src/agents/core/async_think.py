@@ -1,7 +1,7 @@
 """
 AsyncThinkAgent - Advanced agent with worker pool and fork/join capabilities.
 
-This agent extends SimpleAgent to provide parallel task execution through worker agents.
+This agent extends Agent to provide parallel task execution through worker agents.
 It includes fork and join tools
 
 Architecture:
@@ -31,7 +31,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import (
     GenerationBehaviorSettings,
     History,
@@ -58,24 +58,24 @@ class WorkerPool:
     def __init__(self, size: int, agent_config: dict):
         self.size = size
         self.agent_config = agent_config
-        self.workers: List[SimpleAgent] = []
-        self.busy_workers: Dict[str, SimpleAgent] = {}
+        self.workers: List[Agent] = []
+        self.busy_workers: Dict[str, Agent] = {}
         self.task_results: Dict[str, WorkerResult] = {}
         self._initialized = False
 
     async def initialize(self):
-        """Initialize the worker pool with SimpleAgent instances."""
+        """Initialize the worker pool with Agent instances."""
         if self._initialized:
             return
 
         for i in range(self.size):
-            worker = SimpleAgent(name=f"Worker-{i}", **self.agent_config)
+            worker = Agent(name=f"Worker-{i}", **self.agent_config)
             self.workers.append(worker)
 
         self._initialized = True
         logger.info(f"Initialized worker pool with {self.size} workers")
 
-    async def get_available_worker(self) -> Optional[SimpleAgent]:
+    async def get_available_worker(self) -> Optional[Agent]:
         """Get an available worker from the pool."""
         for worker in self.workers:
             if worker.name not in self.busy_workers:
@@ -139,9 +139,9 @@ class WorkerPool:
             del self.task_results[task_id]
 
 
-class AsyncThinkAgent(SimpleAgent):
+class AsyncThinkAgent(Agent):
     """
-    Advanced agent that extends SimpleAgent with worker pool capabilities.
+    Advanced agent that extends Agent with worker pool capabilities.
 
     Provides fork/join tools for parallel task execution and result aggregation.
     """

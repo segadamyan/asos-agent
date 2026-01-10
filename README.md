@@ -53,12 +53,12 @@ export GOOGLE_API_KEY="your-google-api-key"
 
 ```python
 import asyncio
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import History, IntelligenceProviderConfig
 
 async def main():
     # Create a simple agent
-    agent = SimpleAgent(
+    agent = Agent(
         name="MyAgent",
         system_prompt="You are a helpful AI assistant.",
         history=History(),
@@ -106,7 +106,7 @@ asyncio.run(main())
 ```
 ASOS Agent Framework
 ├── Agents Layer
-│   ├── SimpleAgent (Core agent with LLM communication)
+│   ├── Agent (Core agent with LLM communication)
 │   ├── BaseExpertAgent (Abstract class for specialists)
 │   └── Tool Execution System
 ├── Orchestration Layer
@@ -122,7 +122,7 @@ ASOS Agent Framework
 
 ## 🧩 Core Components
 
-### 1. SimpleAgent
+### 1. Agent
 
 The foundational agent that handles:
 - LLM provider communication
@@ -362,7 +362,7 @@ asyncio.run(main())
 
 ```python
 from agents.tools.base import ToolDefinition
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 
 async def get_weather(city: str) -> str:
     """Get weather for a city"""
@@ -376,7 +376,7 @@ weather_tool = ToolDefinition(
     tool=get_weather
 )
 
-agent = SimpleAgent(
+agent = Agent(
     name="WeatherAgent",
     system_prompt="You help users with weather information.",
     history=History(),
@@ -392,7 +392,7 @@ response = await agent.ask("What's the weather in Paris?")
 ```python
 import asyncio
 from src.benchmarks.mmlu_redux import MMLUReduxBenchmark
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import History, IntelligenceProviderConfig
 
 async def main():
@@ -404,7 +404,7 @@ async def main():
     )
     
     # Create agent
-    agent = SimpleAgent(
+    agent = Agent(
         name="Math-Evaluator",
         system_prompt="You are an expert at math questions.",
         history=History(),
@@ -423,10 +423,10 @@ asyncio.run(main())
 
 ## 📚 API Reference
 
-### SimpleAgent
+### Agent
 
 ```python
-class SimpleAgent(BaseAgent):
+class Agent(BaseAgent):
     def __init__(
         self,
         name: str,
@@ -445,7 +445,7 @@ class SimpleAgent(BaseAgent):
         gbs: Optional[GenerationBehaviorSettings] = None
     ) -> Message
     
-    async def fork(self, keep_history: bool = True) -> "SimpleAgent"
+    async def fork(self, keep_history: bool = True) -> "Agent"
 ```
 
 ### Orchestrator

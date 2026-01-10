@@ -1,12 +1,12 @@
 """
-ReActAgent implementation that inherits from SimpleAgent.
-This agent adds ReAct (Reasoning and Acting) pattern capabilities to the SimpleAgent base class.
+ReActAgent implementation that inherits from Agent.
+This agent adds ReAct (Reasoning and Acting) pattern capabilities to the Agent base class.
 """
 
 import logging
 from typing import List, Optional
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.factory import ProviderFactory
 from agents.providers.models.base import (
     GenerationBehaviorSettings,
@@ -22,11 +22,11 @@ from agents.utils.generic import load_prompt
 logger = logging.getLogger(__name__)
 
 
-class ReActAgent(SimpleAgent):
+class ReActAgent(Agent):
     """
-    ReAct Agent that inherits from SimpleAgent and adds ReAct pattern capabilities.
+    ReAct Agent that inherits from Agent and adds ReAct pattern capabilities.
 
-    Enhances SimpleAgent with:
+    Enhances Agent with:
     - ReAct system prompt template with stopping conditions
     - <STOP> keyword detection for intelligent termination
     - Final summary generation when stopping

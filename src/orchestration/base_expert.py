@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
 
 
@@ -18,7 +18,7 @@ class BaseExpertAgent(ABC):
 
     Expert agents are domain-specific agents that can be registered with
     an Orchestrator to handle specialized tasks. Each expert agent wraps
-    a SimpleAgent with a specialized system prompt and provides a unified
+    an Agent with a specialized system prompt and provides a unified
     interface through the execute() method.
     """
 
@@ -53,8 +53,8 @@ class BaseExpertAgent(ABC):
         if "{current_date}" in system_prompt:
             system_prompt = system_prompt.format(current_date=datetime.today().strftime("%Y-%m-%d"))
 
-        # Create the underlying SimpleAgent
-        self.agent = SimpleAgent(
+        # Create the underlying Agent
+        self.agent = Agent(
             name=name,
             system_prompt=system_prompt,
             history=History(),

@@ -1,5 +1,5 @@
 """
-Tool execution utilities for SimpleAgent.
+Tool execution utilities for Agent.
 This module handles tool invocation, error handling, and result processing.
 """
 
@@ -12,7 +12,7 @@ from agents.utils.logs.config import logger
 
 
 class ToolExecutor:
-    """Handles tool invocation and result processing for SimpleAgent"""
+    """Handles tool invocation and result processing for Agent"""
 
     def __init__(self, invoker: ToolInvoker, agent_name: str):
         self.invoker = invoker

@@ -8,7 +8,7 @@ task execution, tool usage, and multi-step workflows.
 from datetime import datetime
 from typing import Dict, Optional
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
 from agents.tools.base import ToolDefinition
 from agents.utils.logs.config import logger
@@ -43,7 +43,7 @@ class Orchestrator:
     """
     Main orchestrator agent for coordinating tasks and workflows.
 
-    The Orchestrator uses a SimpleAgent with a specialized system prompt
+    The Orchestrator uses an Agent with a specialized system prompt
     and can delegate tasks to specialized agents.
     """
 
@@ -79,7 +79,7 @@ class Orchestrator:
         if additional_prompt:
             system_prompt += f"\n\nAdditional Instructions:\n{additional_prompt}"
 
-        self.agent = SimpleAgent(
+        self.agent = Agent(
             name=name,
             system_prompt=system_prompt,
             history=History(),

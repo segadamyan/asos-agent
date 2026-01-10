@@ -9,7 +9,7 @@ import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
 from agents.tools.base import ToolDefinition
 from agents.utils.logs.config import logger
@@ -366,7 +366,7 @@ class BusinessLawAgent(BaseExpertAgent):
             tool=self.statistical_calculator,
         )
 
-        self.agent = SimpleAgent(
+        self.agent = Agent(
             name=name,
             system_prompt=system_prompt,
             history=History(),

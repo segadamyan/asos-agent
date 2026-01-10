@@ -1,5 +1,5 @@
 """
-SimpleAgent serves as the core component for AI interactions within the system:
+Agent serves as the core component for AI interactions within the system:
 - Abstracts communication with different LLM providers
 - Manages conversation history and context window
 - Handles tool invocation and error recovery
@@ -29,7 +29,7 @@ from agents.tools.invoker import ToolInvoker
 from agents.utils.logs.config import logger
 
 
-class SimpleAgent(BaseAgent):
+class Agent(BaseAgent):
     """
     This agent manages conversations with LLM providers, handles tool execution,
     and maintains conversation history within token limits.
@@ -178,12 +178,12 @@ class SimpleAgent(BaseAgent):
         tool_results = await asyncio.gather(*tasks)
         return tool_results
 
-    async def fork(self, keep_history: bool = True, keep_tools: bool = True) -> "SimpleAgent":
+    async def fork(self, keep_history: bool = True, keep_tools: bool = True) -> "Agent":
         """Create a fork of the agent with the same configuration"""
         primary_config = self.providers[0]
         fallback_configs = self.providers[1:] if len(self.providers) > 1 else None
 
-        return SimpleAgent(
+        return Agent(
             name=self.name,
             system_prompt=self._system_prompt,
             history=self.history.model_copy(deep=True) if keep_history else History(),

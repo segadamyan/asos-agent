@@ -24,7 +24,7 @@ from typing import Dict, List, Optional
 from datasets import load_dataset
 from pydantic import BaseModel
 
-from agents.core.simple import SimpleAgent
+from agents.core.agent import Agent
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
 from agents.utils.logs.config import logger
 from orchestration import MathAgent, Orchestrator
@@ -471,7 +471,7 @@ Begin your response now:"""
 
     async def _evaluate_question(
         self,
-        agent: SimpleAgent,
+        agent: Agent,
         question: HLEQuestion,
         question_num: int,
         total_questions: int,
@@ -481,7 +481,7 @@ Begin your response now:"""
         """Evaluate a single question
 
         Args:
-            agent: The SimpleAgent to evaluate
+            agent: The Agent to evaluate
             question: The question to evaluate
             question_num: Question number (1-indexed for logging)
             total_questions: Total number of questions being evaluated
@@ -536,7 +536,7 @@ Begin your response now:"""
 
     async def evaluate_agent(
         self,
-        agent: SimpleAgent,
+        agent: Agent,
         gbs: Optional[GenerationBehaviorSettings] = None,
         max_questions: Optional[int] = None,
         debug: bool = False,
@@ -549,7 +549,7 @@ Begin your response now:"""
         Evaluate an agent on the loaded questions
 
         Args:
-            agent: The SimpleAgent to evaluate
+            agent: The Agent to evaluate
             gbs: Optional generation behavior settings
             max_questions: Maximum total questions to evaluate (for quick testing)
             debug: Enable detailed debug logging for answer extraction and checking
@@ -829,7 +829,7 @@ async def main(
 
     ip_config = IntelligenceProviderConfig(provider_name="openai", version="qwen/qwen3-next-80b-a3b-instruct")
 
-    agent = SimpleAgent(
+    agent = Agent(
         name="HLE-Evaluator",
         system_prompt=f"You are an expert at answering challenging questions across many domains of human knowledge. Current date: {datetime.today().strftime('%Y/%m/%d')}",
         history=History(),
