@@ -146,7 +146,17 @@ class MathAgent(BaseExpertAgent):
             mcp_server_configs: Custom MCP server configurations.
                                If provided, overrides use_basic_server and use_symbolic_server.
         """
-        # Initialize base expert (no MCP at this level)
+        # Determine MCP configs
+        configs = []
+        if enable_mcp:
+            if mcp_server_configs is not None:
+                configs = mcp_server_configs
+            else:
+                configs = get_math_mcp_configs(use_basic_server, use_symbolic_server)
+        
+        self._mcp_configs = configs
+
+        # Initialize base expert - MCP is passed to super and handled by Agent
         super().__init__(
             name=name,
             system_prompt=MATH_AGENT_SYSTEM_PROMPT,
@@ -154,19 +164,9 @@ class MathAgent(BaseExpertAgent):
             gbs=gbs,
             tools=[],
             default_temperature=0.3,
+            enable_mcp=enable_mcp,
+            mcp_server_configs=configs,
         )
-        
-        # Configure MCP directly on the Agent
-        self._enable_mcp = enable_mcp
-        if enable_mcp:
-            if mcp_server_configs is not None:
-                configs = mcp_server_configs
-            else:
-                configs = get_math_mcp_configs(use_basic_server, use_symbolic_server)
-            
-            self._mcp_configs = configs
-            self.agent._mcp_enabled = True
-            self.agent._mcp_configs = configs
 
     async def solve(self, problem: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
         """
@@ -179,31 +179,13 @@ class MathAgent(BaseExpertAgent):
         Returns:
             Message containing the solution
         """
-        # Auto-initialize MCP if enabled
-        if self._enable_mcp and not self.agent._mcp_initialized:
-            await self.agent.initialize_mcp()
-
         effective_gbs = gbs or self._gbs
         return await self.agent.ask(problem, gbs=effective_gbs)
-
-    async def cleanup(self):
-        """Clean up MCP connections."""
-        await self.agent.cleanup_mcp()
-
-    async def __aenter__(self):
-        """Async context manager entry."""
-        if self._enable_mcp:
-            await self.agent.initialize_mcp()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
-        await self.cleanup()
 
     @property
     def description(self) -> str:
         """Get a description of this expert agent's capabilities."""
-        if self._enable_mcp:
+        if self.agent.mcp_enabled:
             servers = [c.name for c in self._mcp_configs]
             return (
                 f"{self._name}: Expert in mathematics including arithmetic, algebra, "
