@@ -6,10 +6,12 @@ Abstract base class for specialized expert agents in the orchestration framework
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from agents.core.agent import Agent
+from agents.core.mcp import MCPServerConfig
 from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
+from agents.tools.base import ToolDefinition
 
 
 class BaseExpertAgent(ABC):
@@ -19,7 +21,7 @@ class BaseExpertAgent(ABC):
     Expert agents are domain-specific agents that can be registered with
     an Orchestrator to handle specialized tasks. Each expert agent wraps
     an Agent with a specialized system prompt and provides a unified
-    interface through the execute() method.
+    interface through the solve() method.
     """
 
     def __init__(
@@ -28,8 +30,10 @@ class BaseExpertAgent(ABC):
         system_prompt: str,
         ip_config: Optional[IntelligenceProviderConfig] = None,
         gbs: Optional[GenerationBehaviorSettings] = None,
-        tools: Optional[list] = None,
+        tools: Optional[List[ToolDefinition]] = None,
         default_temperature: float = 0.3,
+        enable_mcp: bool = False,
+        mcp_server_configs: Optional[List[MCPServerConfig]] = None,
     ):
         """
         Initialize the base expert agent.
@@ -41,9 +45,12 @@ class BaseExpertAgent(ABC):
             gbs: Generation behavior settings
             tools: List of tools available to this agent
             default_temperature: Default temperature for generation (lower for precision)
+            enable_mcp: Whether to enable MCP tool discovery
+            mcp_server_configs: List of MCP server configurations
         """
-        self.name = name
-        self.gbs = gbs or GenerationBehaviorSettings(temperature=default_temperature)
+        self._name = name
+        self._default_temperature = default_temperature
+        self._gbs = gbs or GenerationBehaviorSettings(temperature=default_temperature)
 
         # Set default provider if not specified
         if ip_config is None:
@@ -53,30 +60,21 @@ class BaseExpertAgent(ABC):
         if "{current_date}" in system_prompt:
             system_prompt = system_prompt.format(current_date=datetime.today().strftime("%Y-%m-%d"))
 
-        # Create the underlying Agent
+        # Initialize agent with MCP support (delegated to core Agent)
         self.agent = Agent(
-            name=name,
+            name=self._name,
             system_prompt=system_prompt,
             history=History(),
             ip_config=ip_config,
             tools=tools or [],
+            enable_mcp=enable_mcp,
+            mcp_server_configs=mcp_server_configs,
         )
 
     @abstractmethod
     async def solve(self, problem: str, gbs: Optional[GenerationBehaviorSettings] = None) -> Message:
         """
         Solve a problem or task using this expert agent.
-
-        This is the main interface method that should be implemented by all
-        expert agents. It provides a consistent way for the orchestrator to
-        delegate tasks to specialized agents.
-
-        Args:
-            problem: The problem or question to solve
-            gbs: Optional generation behavior settings to override defaults
-
-        Returns:
-            Message containing the response from the expert agent
         """
         pass
 
@@ -85,19 +83,37 @@ class BaseExpertAgent(ABC):
         self.agent.history.clear()
 
     @property
+    def name(self) -> str:
+        """Get the agent name."""
+        return self._name
+
+    @property
+    def gbs(self) -> GenerationBehaviorSettings:
+        """Get the generation behavior settings."""
+        return self._gbs
+
+    @property
     def history(self) -> History:
         """Get the conversation history."""
         return self.agent.history
 
     @property
+    def available_tools(self) -> List[str]:
+        """Get list of available tool names."""
+        return self.agent.available_tools
+
+    @property
     def description(self) -> str:
         """
         Get a description of this expert agent's capabilities.
-
-        This should be overridden by subclasses to provide specific information
-        about what the agent specializes in.
-
-        Returns:
-            A string describing the agent's expertise
         """
-        return f"{self.name}: A specialized expert agent"
+        return f"{self._name}: A specialized expert agent"
+
+    async def __aenter__(self):
+        """Async context manager entry - delegates to Agent."""
+        await self.agent.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - delegates to Agent."""
+        await self.agent.__aexit__(exc_type, exc_val, exc_tb)
