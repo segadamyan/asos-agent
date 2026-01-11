@@ -233,6 +233,7 @@ Answer:"""
         question_num: int,
         total_questions: int,
         gbs: Optional[GenerationBehaviorSettings] = None,
+        orchestrator_factory=None,
     ) -> MMLUResult:
         """Evaluate a single question
 
@@ -242,6 +243,7 @@ Answer:"""
             question_num: Question number (1-indexed for logging)
             total_questions: Total number of questions being evaluated
             gbs: Optional generation behavior settings
+            orchestrator_factory: Optional function that creates a new Orchestrator for each question
 
         Returns:
             MMLUResult for this question
@@ -251,8 +253,15 @@ Answer:"""
         prompt = self._format_question(question)
 
         try:
-            # Fork agent to avoid history contamination
-            eval_agent = await agent.fork(keep_history=False)
+            # Create fresh orchestrator for this question if factory is provided
+            # This ensures complete isolation and prevents context overflow
+            if orchestrator_factory:
+                fresh_orchestrator = orchestrator_factory()
+                eval_agent = await fresh_orchestrator.agent.fork(keep_history=False)
+            else:
+                # Fork agent to avoid history contamination
+                eval_agent = await agent.fork(keep_history=False)
+
             response = await eval_agent.ask(prompt, gbs)
 
             # Extract predicted answer
@@ -299,12 +308,13 @@ Answer:"""
         max_concurrent: int = 10,
         save_results: bool = False,
         output_path: Optional[str] = None,
+        orchestrator_factory=None,
     ) -> BenchmarkResults:
         """
         Evaluate an agent on the loaded questions
 
         Args:
-            agent: The Agent to evaluate
+            agent: The Agent to evaluate (can be orchestrator.agent if using orchestrator)
             gbs: Optional generation behavior settings
             max_questions: Maximum total questions to evaluate (for quick testing)
             parallel: If True, evaluate questions in parallel using asyncio.gather().
@@ -313,6 +323,8 @@ Answer:"""
                            Default is 10. Adjust based on your API rate limits.
             save_results: If True, automatically save results to JSON file
             output_path: Custom path for JSON output (only used if save_results=True)
+            orchestrator_factory: Optional function that creates fresh Orchestrator instances.
+                                Use when agent needs orchestration with expert agents.
 
         Returns:
             BenchmarkResults containing overall and per-subject accuracy
@@ -339,6 +351,7 @@ Answer:"""
                         question_num=question_num,
                         total_questions=len(questions_to_eval),
                         gbs=gbs,
+                        orchestrator_factory=orchestrator_factory,
                     )
 
             tasks = [evaluate_with_semaphore(question, i + 1) for i, question in enumerate(questions_to_eval)]
@@ -354,6 +367,7 @@ Answer:"""
                     question_num=i + 1,
                     total_questions=len(questions_to_eval),
                     gbs=gbs,
+                    orchestrator_factory=orchestrator_factory,
                 )
                 results.append(result)
 
@@ -515,36 +529,45 @@ async def run_benchmark_with_orchestrator(
         dataset_version=dataset_version,
     )
 
-    # Create orchestrator with specialized agents
-    orchestrator = Orchestrator(
-        name="MMLU-Orchestrator",
-        additional_prompt=f"You are an expert at answering multiple choice questions across various subjects. Current date: {datetime.today().strftime('%Y/%m/%d')}",
-    )
+    ip_config = IntelligenceProviderConfig(provider_name="openai", version="qwen/qwen3-next-80b-a3b-instruct")
 
-    # Register specialized agents
-    math_agent = MathAgent(name="MMLU-Math-Expert")
-    science_agent = ScienceAgent(name="MMLU-Science-Expert")
-    code_agent = CodeAgent(name="MMLU-Code-Expert")
-    business_law_agent = BusinessLawAgent(name="MMLU-BusinessLaw-Expert")
+    def create_fresh_orchestrator():
+        orch = Orchestrator(
+            name="MMLU-Orchestrator",
+            additional_prompt=f"You are an expert at answering multiple choice questions across various subjects. Current date: {datetime.today().strftime('%Y/%m/%d')}",
+            ip_config=ip_config,
+        )
 
-    orchestrator.register_agent("math", math_agent)
-    orchestrator.register_agent("science", science_agent)
-    orchestrator.register_agent("code", code_agent)
-    orchestrator.register_agent("business_law", business_law_agent)
+        orch.register_agent("math", MathAgent(name="MMLU-Math-Expert", ip_config=ip_config))
+        orch.register_agent("science", ScienceAgent(name="MMLU-Science-Expert", ip_config=ip_config))
+        orch.register_agent("code", CodeAgent(name="MMLU-Code-Expert", ip_config=ip_config))
+        orch.register_agent("business_law", BusinessLawAgent(name="MMLU-BusinessLaw-Expert", ip_config=ip_config))
 
-    logger.info(f"Registered agents: {orchestrator.list_agents()}")
+        return orch
+
+    warmup_orchestrator = create_fresh_orchestrator()
+    logger.info(f"Registered agents: {warmup_orchestrator.list_agents()}")
 
     # Warm up
-    warmup_response = await orchestrator.execute("Hello!")
+    warmup_response = await warmup_orchestrator.execute("Hello!")
     logger.info(f"Warmup response: {warmup_response.content[:100]}...")
 
-    # Run evaluation
+    # Run evaluation with factory - each question gets a fresh orchestrator
+    # We pass a dummy agent since the factory will create the actual agents
+    dummy_agent = Agent(
+        name="Dummy",
+        system_prompt="",
+        history=History(),
+        ip_config=ip_config,
+    )
+
     results = await benchmark.evaluate_agent(
-        orchestrator.agent,
+        dummy_agent,  # Will be replaced by fresh orchestrators
         max_questions=max_questions,
         parallel=parallel,
         max_concurrent=max_concurrent,
         save_results=True,
+        orchestrator_factory=create_fresh_orchestrator,
     )
 
     # Print results
