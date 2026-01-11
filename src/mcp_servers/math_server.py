@@ -86,6 +86,7 @@ def solve_linear_equation(equation: str, variable: str = "x") -> Dict[str, Any]:
         - "2x + 5 = 11"
         - "3*x - 7 = 8"
         - "x/2 = 10"
+        - "2x + 3x = 10"
     """
     # Split on equals sign
     if "=" not in equation:
@@ -95,53 +96,206 @@ def solve_linear_equation(equation: str, variable: str = "x") -> Dict[str, Any]:
     left = left.strip()
     right = right.strip()
     
-    # Try to solve by moving all to one side
-    # For simple ax + b = c form
+    # Helper to parse a side
+    def parse_side(expression: str) -> tuple[float, float]:
+        # Normalize: remove spaces around *, /, +, - to make regex simpler
+        # But for now, let's just stick to a robust regex approach
+        
+        # We need to find all terms. A term is [+-]? [number]? [*]? [variable]?
+        # But regexing global matches is tricky with overlapping.
+        # Let's simplify: remove whitespace
+        expr = expression.replace(" ", "")
+        
+        # Handle the case where expression starts without sign
+        if not expr.startswith(("+", "-")):
+            expr = "+" + expr
+            
+        # Pattern to match terms: ([+-]) (number)? ([*])? (variable)?
+        # This is getting complex for regex. 
+        # Simpler approach: split by + or - (keeping delimiters)
+        
+        terms = re.findall(r'[+-][^+-]+', expr)
+        
+        total_coef = 0.0
+        total_const = 0.0
+        
+        for term in terms:
+            sign = 1 if term.startswith("+") else -1
+            content = term[1:] # remove sign
+            
+            if variable in content:
+                # It's a variable term
+                # Remove variable char
+                coef_part = content.replace(variable, "")
+                
+                # Check for multiplication/division
+                if "*" in coef_part:
+                    coef_part = coef_part.replace("*", "")
+                
+                if coef_part == "":
+                    val = 1.0
+                elif coef_part == "/": # handle x/2? No, x/2 would be /2
+                    # content is "x/2" -> coef_part is "/2"
+                    pass # handled below
+                else:
+                    try:
+                        val = float(coef_part)
+                    except ValueError:
+                         # Maybe it is /2
+                         if coef_part.startswith("/"):
+                             val = 1.0 / float(coef_part[1:])
+                         else:
+                             val = 1.0 # Fallback
+                
+                # Handle edge case like "x/2" where content was "x/2", coef_part became "/2"
+                if content.endswith(f"/{variable}"): 
+                    # This logic handles linear only, so 1/x is not supported linear
+                    pass 
+                elif f"/{variable}" in content:
+                     # 1/x case
+                     pass
+                elif content.startswith(variable + "/"):
+                     # x/2 case
+                     denom = content.split("/")[1]
+                     val = 1.0 / float(denom)
+
+                total_coef += sign * val
+            else:
+                # It's a constant
+                try:
+                    total_const += sign * float(content)
+                except ValueError:
+                    pass # Ignore unparseable
+                    
+        return total_coef, total_const
+
+    # Parse both sides
+    # Note: The original regex-based approach was fragile. 
+    # A cleaner approach without full parser is to rely on simple term splitting.
     
-    # Parse left side
-    var_pattern = rf"([+-]?\s*\d*\.?\d*)\s*\*?\s*{variable}"
-    const_pattern = r"([+-]?\s*\d+\.?\d*)\s*(?![a-zA-Z])"
+    # Let's use a simpler logic for this specific tool:
+    # 1. Move everything to left side: left - right = 0
+    # 2. Iterate through terms
     
-    # Extract coefficient of variable from left side
-    var_match = re.search(var_pattern, left)
-    left_coef = 1
-    if var_match:
-        coef_str = var_match.group(1).replace(" ", "")
-        if coef_str in ["", "+"]:
-            left_coef = 1
-        elif coef_str == "-":
-            left_coef = -1
+    # Combine left and right (invert right signs)
+    # Actually, let's reuse the logic but be careful.
+    
+    # IMPROVED LOGIC:
+    # 1. Normalize spaces
+    # 2. Find all matches of `[+-]? \d* \.? \d* x` for variable
+    # 3. Find all matches of `[+-]? \d+ \.? \d*` for constants (careful not to double count)
+    
+    # Let's try to match variable terms first, remove them, then match constants.
+    
+    def parse_poly_linear(side_str: str) -> tuple[float, float]:
+        # Remove spaces
+        s = side_str.replace(" ", "")
+        if not s: return 0.0, 0.0
+        
+        # Add + if no sign at start
+        if s[0] not in "+-":
+            s = "+" + s
+            
+        # Find variable terms: [+-] [float]? [*]? x [/]? [float]?
+        # We assume linear: ax, x/a, x. Not a/x.
+        
+        # Regex for variable term
+        # Groups: 1=Sign, 2=Coef, 3=Divisor
+        # Examples: +2x, -x, +x/2, -3.5*x
+        
+        coef_sum = 0.0
+        
+        # Find all variable terms
+        # This regex looks for [+-], optional number, optional *, var, optional / number
+        # We mask them out after finding to avoid matching constants later
+        
+        var_terms = re.finditer(rf'([+-])(\d*\.?\d*)?\*?{variable}(?:/(\d+\.?\d*))?', s)
+        
+        last_end = 0
+        masked_s = list(s) # To mask out used chars
+        
+        for match in var_terms:
+            start, end = match.span()
+            sign_str = match.group(1)
+            coef_str = match.group(2)
+            denom_str = match.group(3)
+            
+            # Determine value
+            val = 1.0
+            if coef_str:
+                val = float(coef_str)
+            
+            if denom_str:
+                val /= float(denom_str)
+                
+            if sign_str == "-":
+                val = -val
+                
+            coef_sum += val
+            
+            # Mask this part in string so constant finder ignores it
+            for i in range(start, end):
+                masked_s[i] = ' '
+                
+        # Now find constants in the remaining string
+        const_sum = 0.0
+        remaining = "".join(masked_s).replace(" ", "")
+        
+        # If we created fragments like "+ +5", fix it. 
+        # Actually simplest is to just re-scan for numbers with signs.
+        # But we might have destroyed the context. 
+        # Simpler: The variable regex consumes the sign. 
+        # Any remaining part is `[+-] number`.
+        
+        # Let's just find numbers with signs in the original string that WEREN'T part of variable terms.
+        # The masking approach is safe.
+        
+        # remaining is like "+5-3". 
+        # We need to ensure we don't merge signs if masking left holes.
+        # Actually, `re.findall(r'[+-]?\d+\.?\d*', remaining)` might be risky if we left bare numbers.
+        # But we consumed the sign with the variable term.
+        # So "+2x+5" -> "   +5". Correct.
+        # "5+2x" -> "+5+2x" -> "+5   ". Correct.
+        
+        # Let's just parse the masked string for constants
+        # We need to handle the fact that we might have "separated" signs from numbers?
+        # No, because the variable regex includes the leading [+-].
+        
+        const_matches = re.finditer(r'([+-])?(\d+\.?\d*)', remaining)
+        for match in const_matches:
+            sign_str = match.group(1)
+            val_str = match.group(2)
+            
+            val = float(val_str)
+            if sign_str == "-":
+                val = -val
+            
+            const_sum += val
+            
+        return coef_sum, const_sum
+
+    left_coef, left_const = parse_poly_linear(left)
+    right_coef, right_const = parse_poly_linear(right)
+    
+    # Equation: left_coef*x + left_const = right_coef*x + right_const
+    # (left_coef - right_coef)*x = right_const - left_const
+    
+    final_coef = left_coef - right_coef
+    final_const = right_const - left_const
+    
+    if abs(final_coef) < 1e-10:
+        if abs(final_const) < 1e-10:
+            raise ValueError("Identity equation (0=0), infinite solutions")
         else:
-            left_coef = float(coef_str)
-    
-    # Extract constant from left side
-    left_without_var = re.sub(var_pattern, "", left)
-    left_const = 0
-    const_matches = re.findall(r"[+-]?\s*\d+\.?\d*", left_without_var)
-    for match in const_matches:
-        try:
-            left_const += float(match.replace(" ", ""))
-        except:
-            pass
-    
-    # Parse right side (assuming it's just a number for now)
-    try:
-        right_val = float(right)
-    except:
-        raise ValueError(f"Right side must be a number, got: {right}")
-    
-    # Solve: coef * x + const = right_val
-    # x = (right_val - const) / coef
-    if left_coef == 0:
-        raise ValueError("Coefficient of variable is 0, cannot solve")
-    
-    solution = (right_val - left_const) / left_coef
+            raise ValueError("Contradiction (0=k), no solution")
+            
+    solution = final_const / final_coef
     
     return {
         "variable": variable,
         "value": solution,
         "equation": equation,
-        "verification": f"{left_coef}*{solution} + {left_const} = {left_coef * solution + left_const}"
+        "verification": f"{final_coef}*{solution} = {final_const}"
     }
 
 
@@ -455,4 +609,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
 

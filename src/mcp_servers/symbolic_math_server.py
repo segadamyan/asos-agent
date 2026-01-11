@@ -383,7 +383,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             direction = arguments.get("direction", "+-")
             
             if direction == "+-":
-                result = limit(expr, var, point)
+                # Check both sides to be sure
+                left_lim = limit(expr, var, point, dir="-")
+                right_lim = limit(expr, var, point, dir="+")
+                
+                if left_lim == right_lim:
+                    result = left_lim
+                else:
+                    return [TextContent(type="text", text=f"Limit does not exist (Left: {left_lim}, Right: {right_lim})")]
             else:
                 result = limit(expr, var, point, dir=direction)
             return [TextContent(type="text", text=f"Limit as {var} → {point}: {result}")]
@@ -471,4 +478,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
 

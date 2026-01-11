@@ -4,7 +4,7 @@ Test script for the orchestration agents.
 
 Run with:
     cd asos-agent
-    poetry run python test_agents.py
+    poetry run python tests/test_agents.py
 
 Or with Python directly (if dependencies installed):
     python test_agents.py
@@ -19,8 +19,8 @@ import asyncio
 import os
 import sys
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Add src to path (go up one level from tests/ folder)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
 def check_api_keys():
@@ -48,20 +48,20 @@ def check_api_keys():
 
 
 async def test_simple_agent():
-    """Test a basic SimpleAgent."""
+    """Test a basic Agent."""
     print("\n" + "=" * 60)
-    print("TEST 1: SimpleAgent (Basic)")
+    print("TEST 1: Agent (Basic)")
     print("=" * 60)
     
-    from agents.core.simple import SimpleAgent
+    from agents.core.agent import Agent
     from agents.providers.models.base import (
         GenerationBehaviorSettings,
         History,
         IntelligenceProviderConfig,
     )
     
-    # Create a simple agent
-    agent = SimpleAgent(
+    # Create an agent
+    agent = Agent(
         name="TestAgent",
         system_prompt="You are a helpful assistant. Be concise.",
         history=History(),
@@ -77,7 +77,7 @@ async def test_simple_agent():
     
     try:
         gbs = GenerationBehaviorSettings(temperature=0.3, max_output_tokens=100)
-        response = await agent.answer_to(query, gbs)
+        response = await agent.ask(query, gbs)
         print(f"✅ Response: {response.content}")
         return True
     except Exception as e:
@@ -318,7 +318,7 @@ async def run_all_tests():
     results.append(("Statistical Calculator", await test_statistical_calculator_directly()))
     
     # API tests
-    results.append(("SimpleAgent", await test_simple_agent()))
+    results.append(("Agent", await test_simple_agent()))
     results.append(("MathAgent", await test_math_agent()))
     results.append(("ScienceAgent", await test_science_agent()))
     results.append(("CodeAgent", await test_code_agent()))
@@ -387,4 +387,6 @@ Usage:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 

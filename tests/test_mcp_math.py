@@ -6,15 +6,23 @@ This script tests the MathAgent with MCP support, connecting to both
 the basic math server and the symbolic math server.
 
 Usage:
-    poetry run python test_mcp_math.py
+    poetry run python tests/test_mcp_math.py
+
+Note: Each test runs in a subprocess to avoid anyio cancel scope leaks
+from the mcp library affecting subsequent tests.
 """
 
 import asyncio
 import sys
 import os
+import logging
+import subprocess
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Suppress asyncio shutdown errors (known issue with mcp library)
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
+# Add src to path (go up one level from tests/ folder)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
 async def test_basic_math_server():
@@ -27,7 +35,7 @@ async def test_basic_math_server():
     
     math_server_path = os.path.join(
         os.path.dirname(__file__),
-        "src", "mcp_servers", "math_server.py"
+        "..", "src", "mcp_servers", "math_server.py"
     )
     
     config = MCPServerConfig(
@@ -83,7 +91,7 @@ async def test_symbolic_math_server():
     
     symbolic_server_path = os.path.join(
         os.path.dirname(__file__),
-        "src", "mcp_servers", "symbolic_math_server.py"
+        "..", "src", "mcp_servers", "symbolic_math_server.py"
     )
     
     config = MCPServerConfig(
@@ -207,11 +215,11 @@ async def test_combined_math_agent():
     
     basic_server_path = os.path.join(
         os.path.dirname(__file__),
-        "src", "mcp_servers", "math_server.py"
+        "..", "src", "mcp_servers", "math_server.py"
     )
     symbolic_server_path = os.path.join(
         os.path.dirname(__file__),
-        "src", "mcp_servers", "symbolic_math_server.py"
+        "..", "src", "mcp_servers", "symbolic_math_server.py"
     )
     
     configs = [
@@ -291,43 +299,93 @@ async def test_math_agent_with_llm():
     return True
 
 
-async def main():
-    """Run all MCP tests."""
+def run_test_in_subprocess(test_name: str) -> bool:
+    """Run a single test in an isolated subprocess to avoid cancel scope leaks."""
+    script_path = os.path.abspath(__file__)
+    
+    result = subprocess.run(
+        [sys.executable, script_path, f"--test={test_name}"],
+        capture_output=False,
+        env=os.environ.copy()
+    )
+    
+    return result.returncode == 0
+
+
+async def run_single_test(test_name: str) -> int:
+    """Run a single test (called from subprocess)."""
+    try:
+        if test_name == "basic":
+            passed = await test_basic_math_server()
+        elif test_name == "symbolic":
+            passed = await test_symbolic_math_server()
+        elif test_name == "combined":
+            passed = await test_combined_math_agent()
+        elif test_name == "llm":
+            passed = await test_math_agent_with_llm()
+        else:
+            print(f"Unknown test: {test_name}")
+            return 1
+        
+        return 0 if passed else 1
+    except Exception as e:
+        print(f"\n❌ Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+def suppress_mcp_shutdown_errors(loop, context):
+    """Suppress known harmless MCP library shutdown errors."""
+    exception = context.get("exception")
+    message = context.get("message", "")
+    
+    # Suppress anyio cancel scope errors during shutdown
+    if exception and isinstance(exception, RuntimeError):
+        error_msg = str(exception)
+        if "cancel scope" in error_msg or "asynchronous generator is already running" in error_msg:
+            return  # Suppress this error
+    
+    # Suppress CancelledError during shutdown
+    if exception and isinstance(exception, asyncio.CancelledError):
+        return  # Suppress this error
+    
+    # Suppress async generator closing errors (stdio_client)
+    if "closing of asynchronous generator" in message:
+        return  # Suppress this error
+    
+    # For other errors, use default handler
+    loop.default_exception_handler(context)
+
+
+def main():
+    """Run all MCP tests in isolated subprocesses."""
     print("\n" + "=" * 60)
     print("🧮 MCP Math Agent Test Suite (Basic + Symbolic)")
     print("=" * 60)
+    print("(Each test runs in isolated subprocess to avoid mcp library issues)\n")
     
     results = {}
     
-    # Test 1: Basic math server
-    try:
-        results["Basic Math Server"] = await test_basic_math_server()
-    except Exception as e:
-        print(f"\n❌ Basic math server test failed: {e}")
-        results["Basic Math Server"] = False
+    # Define tests to run
+    tests = [
+        ("Basic Math Server", "basic"),
+        ("Symbolic Math Server", "symbolic"),
+        ("Combined MathAgent", "combined"),
+    ]
     
-    # Test 2: Symbolic math server
-    try:
-        results["Symbolic Math Server"] = await test_symbolic_math_server()
-    except Exception as e:
-        print(f"\n❌ Symbolic math server test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        results["Symbolic Math Server"] = False
+    # Add LLM test if API key is set
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        tests.append(("LLM Integration", "llm"))
+    else:
+        print("⚠️  OPENAI_API_KEY not set. Skipping LLM test.\n")
+        results["LLM Integration"] = True
     
-    # Test 3: Combined agent
-    try:
-        results["Combined MathAgent"] = await test_combined_math_agent()
-    except Exception as e:
-        print(f"\n❌ Combined agent test failed: {e}")
-        results["Combined MathAgent"] = False
-    
-    # Test 4: LLM integration (optional)
-    try:
-        results["LLM Integration"] = await test_math_agent_with_llm()
-    except Exception as e:
-        print(f"\n❌ LLM integration test failed: {e}")
-        results["LLM Integration"] = False
+    # Run each test in isolated subprocess
+    for test_display_name, test_id in tests:
+        passed = run_test_in_subprocess(test_id)
+        results[test_display_name] = passed
     
     # Summary
     print("\n" + "=" * 60)
@@ -347,5 +405,22 @@ async def main():
 
 
 if __name__ == "__main__":
-    exit_code = asyncio.run(main())
-    sys.exit(exit_code)
+    # Check if running a single test (subprocess mode)
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--test="):
+        test_name = sys.argv[1].split("=")[1]
+        
+        # Set up event loop with custom exception handler
+        loop = asyncio.new_event_loop()
+        loop.set_exception_handler(suppress_mcp_shutdown_errors)
+        asyncio.set_event_loop(loop)
+        
+        try:
+            exit_code = loop.run_until_complete(run_single_test(test_name))
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+        
+        sys.exit(exit_code)
+    else:
+        # Main mode - run all tests in subprocesses
+        sys.exit(main())
