@@ -75,38 +75,39 @@ BASIC_MATH_SERVER = os.path.join(MCP_SERVERS_DIR, "math_server.py")
 SYMBOLIC_MATH_SERVER = os.path.join(MCP_SERVERS_DIR, "symbolic_math_server.py")
 
 
-def get_math_mcp_configs(
-    use_basic_server: bool = True,
-    use_symbolic_server: bool = True
-) -> List[MCPServerConfig]:
+def get_math_mcp_configs(use_basic_server: bool = True, use_symbolic_server: bool = True) -> List[MCPServerConfig]:
     """
     Get MCP server configurations for math operations.
-    
+
     Args:
         use_basic_server: Include basic math server
         use_symbolic_server: Include symbolic math server
-        
+
     Returns:
         List of MCPServerConfig objects
     """
     configs = []
-    
+
     if use_basic_server:
-        configs.append(MCPServerConfig(
-            name="basic-math",
-            command=[sys.executable, BASIC_MATH_SERVER],
-            args=[],
-            env={},
-        ))
-    
+        configs.append(
+            MCPServerConfig(
+                name="basic-math",
+                command=[sys.executable, BASIC_MATH_SERVER],
+                args=[],
+                env={},
+            )
+        )
+
     if use_symbolic_server:
-        configs.append(MCPServerConfig(
-            name="symbolic-math",
-            command=[sys.executable, SYMBOLIC_MATH_SERVER],
-            args=[],
-            env={},
-        ))
-    
+        configs.append(
+            MCPServerConfig(
+                name="symbolic-math",
+                command=[sys.executable, SYMBOLIC_MATH_SERVER],
+                args=[],
+                env={},
+            )
+        )
+
     return configs
 
 
@@ -116,7 +117,7 @@ class MathAgent(BaseExpertAgent):
 
     This agent is optimized for solving mathematical problems, performing
     calculations, and explaining mathematical concepts.
-    
+
     Supports MCP for dynamic tool discovery from external math servers.
     When MCP is enabled, it connects to:
     - Basic Math Server: arithmetic, statistics, simple equations
@@ -153,7 +154,7 @@ class MathAgent(BaseExpertAgent):
                 configs = mcp_server_configs
             else:
                 configs = get_math_mcp_configs(use_basic_server, use_symbolic_server)
-        
+
         self._mcp_configs = configs
 
         # Initialize base expert - MCP is passed to super and handled by Agent
