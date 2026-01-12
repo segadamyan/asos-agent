@@ -32,7 +32,7 @@ class Agent(BaseAgent):
     """
     This agent manages conversations with LLM providers, handles tool execution,
     and maintains conversation history within token limits.
-    
+
     Supports MCP (Model Context Protocol) for dynamic tool discovery from external servers.
     """
 
@@ -73,7 +73,7 @@ class Agent(BaseAgent):
         self.max_invocations_count = max_invocations_count
 
         self._tools = tools or []
-        
+
         # MCP support
         self._mcp_enabled = enable_mcp
         self._mcp_configs = mcp_server_configs or []
@@ -86,16 +86,16 @@ class Agent(BaseAgent):
     async def initialize_mcp(self) -> "Agent":
         """
         Initialize MCP connections and discover tools.
-        
+
         Must be called before using the agent if MCP is enabled.
         For non-MCP agents, this is a no-op.
-        
+
         Returns:
             self for method chaining
         """
         if self._mcp_initialized or not self._mcp_enabled:
             return self
-            
+
         if self._mcp_configs:
             self._mcp_discovery = MCPDiscovery()
             try:
@@ -107,7 +107,7 @@ class Agent(BaseAgent):
             except Exception as exc:
                 logger.exception("Failed to discover MCP tools", exc_info=exc)
                 raise
-                
+
         self._mcp_initialized = True
         return self
 
@@ -121,13 +121,13 @@ class Agent(BaseAgent):
     async def add_mcp_servers(self, mcp_configs: List[MCPServerConfig]) -> None:
         """
         Add MCP servers and discover their tools dynamically.
-        
+
         Args:
             mcp_configs: List of MCP server configurations to add
         """
         if not self._mcp_discovery:
             self._mcp_discovery = MCPDiscovery()
-            
+
         try:
             mcp_tools = await self._mcp_discovery.discover(mcp_configs)
             self._tools.extend(mcp_tools)
@@ -174,6 +174,8 @@ class Agent(BaseAgent):
 
     async def _create_provider(self):
         """Create provider instance"""
+        if self._current_provider_index >= len(self.providers):
+            self._current_provider_index = len(self.providers) - 1
         config = self.providers[self._current_provider_index]
         return ProviderFactory().create(self._system_prompt, config, self._tools)
 
@@ -229,9 +231,7 @@ class Agent(BaseAgent):
 
         return message
 
-    async def ask_and_clear_history(
-        self, search_query: str, gbs: Optional[GenerationBehaviorSettings] = None
-    ) -> str:
+    async def ask_and_clear_history(self, search_query: str, gbs: Optional[GenerationBehaviorSettings] = None) -> str:
         """Answer a query and clear the conversation history"""
         message = await self.ask(search_query, gbs)
         self.history.clear()
