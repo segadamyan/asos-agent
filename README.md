@@ -19,6 +19,7 @@
 - [Architecture](#architecture)
 - [Core Components](#core-components)
 - [Expert Agents](#expert-agents)
+- [MCP Support](#-mcp-model-context-protocol-support)
 - [Benchmarks](#benchmarks)
 - [Configuration](#configuration)
 - [Examples](#examples)
@@ -109,15 +110,20 @@ ASOS Agent Framework
 │   ├── Agent (Core agent with LLM communication)
 │   ├── BaseExpertAgent (Abstract class for specialists)
 │   └── Tool Execution System
+├── MCP Layer (Model Context Protocol)
+│   ├── MCPClient (stdio transport)
+│   ├── MCPDiscovery (Tool discovery & conversion)
+│   └── MCP Servers (Basic Math, Symbolic Math)
 ├── Orchestration Layer
 │   ├── Orchestrator (Task coordinator)
-│   └── Expert Agents (Math, Science, Code)
+│   └── Expert Agents (Math, Science, Code, BusinessLaw)
 ├── Provider Layer
 │   ├── OpenAI Provider
 │   ├── Anthropic Provider
 │   └── Gemini Provider
 └── Benchmarks Layer
-    └── MMLU-Redux
+    ├── MMLU-Redux
+    └── HLE (Humanity's Last Exam)
 ```
 
 ## 🧩 Core Components
@@ -196,6 +202,185 @@ class CustomExpertAgent(BaseExpertAgent):
     def description(self) -> str:
         return f"{self.name}: Expert in custom domain"
 ```
+
+## 🔌 MCP (Model Context Protocol) Support
+
+ASOS Agent supports **MCP** for dynamic tool discovery from external servers. This enables agents to use specialized computational tools without hardcoding them.
+
+### What is MCP?
+
+MCP (Model Context Protocol) is an open standard for AI models to communicate with external tools and services. ASOS uses **stdio transport** to spawn MCP servers as subprocesses.
+
+### Built-in MCP Math Servers
+
+| Server | Tools | Purpose |
+|--------|-------|---------|
+| **Basic Math** | 10 | Arithmetic, statistics, equations, matrices |
+| **Symbolic Math** | 12 | Calculus, symbolic algebra, eigenvalues (SymPy) |
+
+### Quick Start with MCP
+
+```python
+import asyncio
+from orchestration.math_agent import MathAgent
+
+async def main():
+    # MathAgent with MCP tools enabled
+    async with MathAgent(name="MathExpert", enable_mcp=True) as agent:
+        # Agent now has 22 mathematical tools available
+        print(f"Available tools: {agent.available_tools}")
+        
+        # Solve a calculus problem using symbolic tools
+        result = await agent.solve(
+            "Calculate the derivative of x³ + 2x² - 5x + 1"
+        )
+        print(result.content)
+
+asyncio.run(main())
+```
+
+### MCP Configuration Options
+
+```python
+from orchestration.math_agent import MathAgent
+
+# Use both math servers (default)
+agent = MathAgent(enable_mcp=True)
+
+# Use only basic math server
+agent = MathAgent(enable_mcp=True, use_symbolic_server=False)
+
+# Use only symbolic math server  
+agent = MathAgent(enable_mcp=True, use_basic_server=False)
+
+# Custom MCP server configuration
+from agents.core.mcp import MCPServerConfig
+
+custom_config = MCPServerConfig(
+    name="my-math-server",
+    command=["python", "my_server.py"],
+    args=["--port", "8080"],
+    env={"DEBUG": "1"}
+)
+agent = MathAgent(enable_mcp=True, mcp_server_configs=[custom_config])
+```
+
+### Available MCP Tools
+
+#### Basic Math Server (10 tools)
+| Tool | Description |
+|------|-------------|
+| `calculate` | Evaluate expressions (sqrt, sin, cos, log, etc.) |
+| `solve_equation` | Solve linear equations |
+| `factorial` | Calculate n! |
+| `gcd` / `lcm` | Greatest common divisor / Least common multiple |
+| `power` | Exponentiation |
+| `sqrt` | Square root |
+| `statistics` | Mean, median, std_dev, variance, min, max |
+| `matrix_multiply` | Matrix multiplication |
+| `matrix_determinant` | Matrix determinant (up to 3x3) |
+
+#### Symbolic Math Server (12 tools)
+| Tool | Description |
+|------|-------------|
+| `symbolic_solve` | Solve equations symbolically (including systems) |
+| `symbolic_simplify` | Simplify algebraic expressions |
+| `symbolic_differentiate` | Compute derivatives |
+| `symbolic_integrate` | Compute integrals (definite/indefinite) |
+| `symbolic_limit` | Compute limits |
+| `symbolic_series` | Taylor/Maclaurin series expansion |
+| `symbolic_factor` | Factor polynomials |
+| `symbolic_expand` | Expand expressions |
+| `matrix_inverse` | Matrix inverse |
+| `matrix_eigenvalues` | Eigenvalues and eigenvectors |
+| `polynomial_roots` | Find polynomial roots |
+| `trigonometric_simplify` | Simplify trig expressions |
+
+### Adding MCP to Other Agents
+
+Any agent inheriting from `BaseExpertAgent` can use MCP:
+
+```python
+from orchestration.base_expert import BaseExpertAgent
+from agents.core.mcp import MCPServerConfig
+
+class MyCustomAgent(BaseExpertAgent):
+    def __init__(self, enable_mcp=False):
+        mcp_configs = [
+            MCPServerConfig(
+                name="my-server",
+                command=["python", "my_mcp_server.py"]
+            )
+        ] if enable_mcp else []
+        
+        super().__init__(
+            name="CustomAgent",
+            system_prompt="Your system prompt here",
+            enable_mcp=enable_mcp,
+            mcp_server_configs=mcp_configs,
+        )
+    
+    async def solve(self, problem, gbs=None):
+        await self._ensure_initialized()  # Initialize MCP if enabled
+        return await self.agent.answer_to(problem, gbs=gbs or self.gbs)
+```
+
+### Creating Custom MCP Servers
+
+Create your own MCP server using the `mcp` library:
+
+```python
+# my_mcp_server.py
+import asyncio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import TextContent, Tool
+
+server = Server("my-server")
+
+@server.list_tools()
+async def list_tools():
+    return [
+        Tool(
+            name="my_tool",
+            description="Description of what your tool does",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string", "description": "First parameter"}
+                },
+                "required": ["param1"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict):
+    if name == "my_tool":
+        result = f"Processed: {arguments['param1']}"
+        return [TextContent(type="text", text=result)]
+
+async def main():
+    async with stdio_server() as (read, write):
+        await server.run(read, write, server.create_initialization_options())
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Testing MCP Integration
+
+```bash
+# Run MCP-specific tests
+poetry run python test_mcp_math.py
+
+# Expected output:
+# Basic Math Server: ✅ PASSED (10 tools)
+# Symbolic Math Server: ✅ PASSED (12 tools)
+# Combined MathAgent: ✅ PASSED (22 tools)
+```
+
+---
 
 ## 📊 Benchmarks
 
