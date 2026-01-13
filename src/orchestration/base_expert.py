@@ -10,7 +10,12 @@ from typing import List, Optional
 
 from agents.core.agent import Agent
 from agents.core.mcp import MCPServerConfig
-from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    History,
+    IntelligenceProviderConfig,
+    Message,
+)
 from agents.tools.base import ToolDefinition
 
 
