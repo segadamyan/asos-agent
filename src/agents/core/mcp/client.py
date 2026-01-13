@@ -86,7 +86,10 @@ class MCPClient:
                 try:
                     import asyncio
 
-                    await asyncio.wait_for(asyncio.shield(self._stdio_cm.__aexit__(None, None, None)), timeout=2.0)
+                    await asyncio.wait_for(
+                        asyncio.shield(self._stdio_cm.__aexit__(None, None, None)),
+                        timeout=2.0,
+                    )
                 except (asyncio.CancelledError, asyncio.TimeoutError, Exception) as e:
                     logger.debug(f"Stdio context exit (may be expected): {type(e).__name__}")
                 self._stdio_cm = None
@@ -141,7 +144,10 @@ class MCPClient:
             MCPToolResult containing the result or error
         """
         if not self._connected or not self._session:
-            return MCPToolResult(content=f"Not connected to MCP server: {self.config.name}", is_error=True)
+            return MCPToolResult(
+                content=f"Not connected to MCP server: {self.config.name}",
+                is_error=True,
+            )
 
         try:
             logger.info(f"Calling MCP tool: {tool_name} with args: {arguments}")
@@ -161,7 +167,10 @@ class MCPClient:
             content = "\n".join(content_parts) if content_parts else str(result)
 
             logger.info(f"MCP tool {tool_name} completed successfully")
-            return MCPToolResult(content=content, is_error=result.isError if hasattr(result, "isError") else False)
+            return MCPToolResult(
+                content=content,
+                is_error=result.isError if hasattr(result, "isError") else False,
+            )
 
         except Exception as e:
             logger.error(f"Failed to call MCP tool {tool_name}: {e}")

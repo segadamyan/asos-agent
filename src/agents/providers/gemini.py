@@ -33,7 +33,10 @@ from agents.providers.models.base import (
     RoleEnum,
     ToolCallRequest,
 )
-from agents.providers.models.exceptions import LLMContextOverflowError, ProviderFailureError
+from agents.providers.models.exceptions import (
+    LLMContextOverflowError,
+    ProviderFailureError,
+)
 from agents.providers.models.token_usage import BaseUsageLogEntry
 from agents.utils.logs.config import logger
 
@@ -172,7 +175,8 @@ class GeminiProvider(BaseProvider):
             )
         else:
             genai_config["thinking_config"] = types.ThinkingConfig(
-                thinking_budget=gbs.thinking_budget if gbs.thinking else 0, include_thoughts=gbs.thinking
+                thinking_budget=gbs.thinking_budget if gbs.thinking else 0,
+                include_thoughts=gbs.thinking,
             )
 
         if tools:
@@ -296,7 +300,9 @@ class GeminiProvider(BaseProvider):
                     if hasattr(part, "thought") and part.thought:
                         thoughts.append(
                             LLMThought(
-                                content=part.text, signature=part.thought_signature, type=self.THOUGH_TYPE_THINKING
+                                content=part.text,
+                                signature=part.thought_signature,
+                                type=self.THOUGH_TYPE_THINKING,
                             )
                         )
                     else:

@@ -61,7 +61,12 @@ class ToolInvoker:
     ):
         self.tools_map: Dict[str, ToolDefinition] = {tool.name: tool for tool in tool_definitions}
 
-    async def invoke(self, tool_name: str, tool_arguments: dict[str, Any], tool_call_id: Optional[str] = None):
+    async def invoke(
+        self,
+        tool_name: str,
+        tool_arguments: dict[str, Any],
+        tool_call_id: Optional[str] = None,
+    ):
         try:
             tool_definition = self.tools_map[tool_name]
         except KeyError:

@@ -25,7 +25,10 @@ from agents.providers.models.base import (
     RoleEnum,
     ToolCallRequest,
 )
-from agents.providers.models.exceptions import LLMContextOverflowError, ProviderFailureError
+from agents.providers.models.exceptions import (
+    LLMContextOverflowError,
+    ProviderFailureError,
+)
 from agents.providers.models.token_usage import BaseUsageLogEntry
 from agents.utils.logs.config import logger
 
@@ -63,7 +66,10 @@ class OpenAIProvider(BaseProvider):
             config["allowed_domains"] = gbs.options["web_search_allowed_domains"]
 
         if gbs.options.get("web_search_user_location"):
-            config["user_location"] = {"type": "approximate", **gbs.options["web_search_user_location"]}
+            config["user_location"] = {
+                "type": "approximate",
+                **gbs.options["web_search_user_location"],
+            }
         return config
 
     def _prepare_messages(self, history) -> list[dict[str, str]]:
@@ -95,7 +101,13 @@ class OpenAIProvider(BaseProvider):
                             },
                         }
                     )
-                messages.append({"role": "assistant", "content": message.content or None, "tool_calls": tool_calls})
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": message.content or None,
+                        "tool_calls": tool_calls,
+                    }
+                )
             elif message.message_type == "tool_result":
                 # Add tool response messages
                 for tool_call_result in message.tool_call_results:

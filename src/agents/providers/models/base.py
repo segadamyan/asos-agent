@@ -95,7 +95,11 @@ class History(BaseModel):
 
     def add_system_message(self, content: str, additional_message_type: Optional[str] = None):
         self.add_message(
-            Message(role=RoleEnum.SYSTEM, content=content, additional_message_type=additional_message_type)
+            Message(
+                role=RoleEnum.SYSTEM,
+                content=content,
+                additional_message_type=additional_message_type,
+            )
         )
 
     def add_message(self, message: Message):
@@ -212,7 +216,9 @@ class BaseProvider(metaclass=ABCMeta):
         raise NotImplementedError
 
     async def get_response(
-        self, history: Optional[History] = None, gbs: Optional[GenerationBehaviorSettings] = None
+        self,
+        history: Optional[History] = None,
+        gbs: Optional[GenerationBehaviorSettings] = None,
     ) -> Message:
         if not history:
             history = History()

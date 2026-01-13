@@ -62,7 +62,6 @@ class ReActAgent(Agent):
             max_invocations_count=max_invocations_count,
             fallback_ip_configs=fallback_ip_configs,
             max_provider_retries=max_provider_retries,
-            token_manager=token_manager,
         )
 
         self.max_iterations = max_iterations

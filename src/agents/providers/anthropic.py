@@ -26,7 +26,10 @@ from agents.providers.models.base import (
     RoleEnum,
     ToolCallRequest,
 )
-from agents.providers.models.exceptions import LLMContextOverflowError, ProviderFailureError
+from agents.providers.models.exceptions import (
+    LLMContextOverflowError,
+    ProviderFailureError,
+)
 from agents.providers.models.token_usage import BaseUsageLogEntry
 from agents.utils.logs.config import logger
 
@@ -68,7 +71,11 @@ class AnthropicProvider(BaseProvider):
                             "type": "redacted_thinking",
                         }
                     elif thought.type == self.THOUGH_TYPE_THINKING and thought.signature is not None:
-                        content = {"signature": thought.signature, "thinking": thought.content, "type": "thinking"}
+                        content = {
+                            "signature": thought.signature,
+                            "thinking": thought.content,
+                            "type": "thinking",
+                        }
                     else:
                         continue
 
@@ -199,7 +206,10 @@ class AnthropicProvider(BaseProvider):
         raise ProviderFailureError("Anthropic provider failed after 3 retries") from error
 
     async def _response_to_message(
-        self, response, history: History, gbs: Optional[GenerationBehaviorSettings] = None
+        self,
+        response,
+        history: History,
+        gbs: Optional[GenerationBehaviorSettings] = None,
     ) -> Message:
         messages, tool_calls, thoughts = [], [], []
         for content in response.content:
@@ -220,12 +230,18 @@ class AnthropicProvider(BaseProvider):
                 pass
             elif content.type == "thinking":
                 thoughts.append(
-                    LLMThought(content=content.thinking, signature=content.signature, type=self.THOUGH_TYPE_THINKING)
+                    LLMThought(
+                        content=content.thinking,
+                        signature=content.signature,
+                        type=self.THOUGH_TYPE_THINKING,
+                    )
                 )
             elif content.type == "redacted_thinking":
                 thoughts.append(
                     LLMThought(
-                        content=content.redacted_thinking, signature=content.signature, type=self.THOUGHT_TYPE_REDACTED
+                        content=content.redacted_thinking,
+                        signature=content.signature,
+                        type=self.THOUGHT_TYPE_REDACTED,
                     )
                 )
             else:
