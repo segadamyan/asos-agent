@@ -10,10 +10,16 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from agents.core.agent import Agent
-from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    History,
+    IntelligenceProviderConfig,
+    Message,
+)
 from agents.tools.base import ToolDefinition
 from agents.utils.logs.config import logger
 from orchestration.base_expert import BaseExpertAgent
+from tools.business_law_tools import get_business_law_tools
 
 BUSINESS_LAW_AGENT_SYSTEM_PROMPT = """You are a specialized business, law, and professional ethics expert AI agent.
 
@@ -107,7 +113,10 @@ class BusinessLawAgent(BaseExpertAgent):
                 npv = sum(cf / ((1 + rate) ** (i + 1)) for i, cf in enumerate(cash_flows))
                 initial_investment = cash_flows[0] if cash_flows else 0
                 npv_result = npv + initial_investment
-                return {"result": round(npv_result, 2), "formula": "NPV = Σ(CF_t / (1+r)^t) - Initial Investment"}
+                return {
+                    "result": round(npv_result, 2),
+                    "formula": "NPV = Σ(CF_t / (1+r)^t) - Initial Investment",
+                }
 
             elif operation == "irr" and cash_flows:
                 # Simple IRR approximation using Newton-Raphson
@@ -126,7 +135,11 @@ class BusinessLawAgent(BaseExpertAgent):
                         break
                     rate_guess = rate_guess - npv_val / derivative
 
-                return {"result": round(rate_guess * 100, 2), "unit": "%", "formula": "IRR: rate where NPV = 0"}
+                return {
+                    "result": round(rate_guess * 100, 2),
+                    "unit": "%",
+                    "formula": "IRR: rate where NPV = 0",
+                }
 
             elif operation == "current_ratio" and current_assets and current_liabilities:
                 ratio = current_assets / current_liabilities if current_liabilities != 0 else "Undefined"
@@ -221,7 +234,10 @@ class BusinessLawAgent(BaseExpertAgent):
                 denominator = math.sqrt(sum((x - mean_x) ** 2 for x in x_data) * sum((y - mean_y) ** 2 for y in y_data))
 
                 correlation = numerator / denominator if denominator != 0 else 0
-                return {"result": round(correlation, 4), "formula": "r = Σ((x-x̄)(y-ȳ)) / √(Σ(x-x̄)²Σ(y-ȳ)²)"}
+                return {
+                    "result": round(correlation, 4),
+                    "formula": "r = Σ((x-x̄)(y-ȳ)) / √(Σ(x-x̄)²Σ(y-ȳ)²)",
+                }
 
             elif operation == "regression" and x_data and y_data and len(x_data) == len(y_data):
                 n = len(x_data)
@@ -365,13 +381,15 @@ class BusinessLawAgent(BaseExpertAgent):
             },
             tool=self.statistical_calculator,
         )
+        business_law_tools = [financial_calculator_tool, statistical_calculator_tool]
+        business_law_tools.extend(get_business_law_tools())
 
         self.agent = Agent(
             name=name,
             system_prompt=system_prompt,
             history=History(),
             ip_config=ip_config,
-            tools=[financial_calculator_tool, statistical_calculator_tool],
+            tools=business_law_tools,
         )
 
         # Override default temperature for precise legal/business reasoning

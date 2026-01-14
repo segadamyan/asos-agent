@@ -6,8 +6,15 @@ Specialized agent for scientific questions across physics, chemistry, and biolog
 
 from typing import Optional
 
-from agents.providers.models.base import GenerationBehaviorSettings, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    IntelligenceProviderConfig,
+    Message,
+)
 from orchestration.base_expert import BaseExpertAgent
+from tools.chemistry_tools import get_chemistry_tools
+from tools.medical_tools import get_medical_tools
+from tools.physics_tools import get_physics_tools
 
 SCIENCE_AGENT_SYSTEM_PROMPT = """You are a specialized science expert AI agent.
 
@@ -63,12 +70,17 @@ class ScienceAgent(BaseExpertAgent):
             ip_config: Intelligence provider configuration
             gbs: Generation behavior settings
         """
+        science_tools = []
+        science_tools.extend(get_physics_tools())
+        science_tools.extend(get_chemistry_tools())
+        science_tools.extend(get_medical_tools())
+
         super().__init__(
             name=name,
             system_prompt=SCIENCE_AGENT_SYSTEM_PROMPT,
             ip_config=ip_config,
             gbs=gbs,
-            tools=[],
+            tools=science_tools,
             default_temperature=0.3,
         )
 

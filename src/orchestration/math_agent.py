@@ -14,8 +14,13 @@ import sys
 from typing import List, Optional
 
 from agents.core.mcp import MCPServerConfig
-from agents.providers.models.base import GenerationBehaviorSettings, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    IntelligenceProviderConfig,
+    Message,
+)
 from orchestration.base_expert import BaseExpertAgent
+from tools.math_tools import get_math_tools
 
 MATH_AGENT_SYSTEM_PROMPT = """You are a specialized mathematics expert AI agent.
 
@@ -163,7 +168,7 @@ class MathAgent(BaseExpertAgent):
             system_prompt=MATH_AGENT_SYSTEM_PROMPT,
             ip_config=ip_config,
             gbs=gbs,
-            tools=[],
+            tools=get_math_tools() if not enable_mcp else [],  # Use native tools if MCP disabled
             default_temperature=0.3,
             enable_mcp=enable_mcp,
             mcp_server_configs=configs,

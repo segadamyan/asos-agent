@@ -9,7 +9,12 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from agents.core.agent import Agent
-from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    History,
+    IntelligenceProviderConfig,
+    Message,
+)
 from agents.tools.base import ToolDefinition
 from agents.utils.logs.config import logger
 from orchestration.base_expert import BaseExpertAgent

@@ -6,8 +6,13 @@ Specialized agent for programming, software engineering, and computer science.
 
 from typing import Optional
 
-from agents.providers.models.base import GenerationBehaviorSettings, IntelligenceProviderConfig, Message
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    IntelligenceProviderConfig,
+    Message,
+)
 from orchestration.base_expert import BaseExpertAgent
+from tools.computer_science_tools import get_computer_science_tools
 
 CODE_AGENT_SYSTEM_PROMPT = """You are a specialized programming and computer science expert AI agent.
 
@@ -73,7 +78,7 @@ class CodeAgent(BaseExpertAgent):
             system_prompt=CODE_AGENT_SYSTEM_PROMPT,
             ip_config=ip_config,
             gbs=gbs,
-            tools=[],
+            tools=get_computer_science_tools(),
             default_temperature=0.2,  # Even lower for code precision
         )
 
