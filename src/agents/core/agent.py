@@ -45,7 +45,7 @@ class Agent(BaseAgent):
         tools: List[ToolDefinition] = None,
         _gbs: Optional[GenerationBehaviorSettings] = None,
         enable_parallel_execution: bool = True,
-        max_invocations_count: Optional[int] = None,
+        max_invocations_count: Optional[int] = 10,
         fallback_ip_configs: Optional[List[IntelligenceProviderConfig]] = None,
         max_provider_retries: int = 2,
         enable_mcp: bool = False,

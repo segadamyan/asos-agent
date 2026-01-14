@@ -41,7 +41,11 @@ def orchestrator_with_tools():
             "a": "First number",
             "b": "Second number",
         },
-        args_schema={"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}},
+        args_schema={
+            "operation": {"type": "string"},
+            "a": {"type": "number"},
+            "b": {"type": "number"},
+        },
         tool=calculate,
     )
 

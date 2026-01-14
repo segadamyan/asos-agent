@@ -36,7 +36,11 @@ def calculator_tool():
             "a": "First number",
             "b": "Second number",
         },
-        args_schema={"operation": {"type": "string"}, "a": {"type": "number"}, "b": {"type": "number"}},
+        args_schema={
+            "operation": {"type": "string"},
+            "a": {"type": "number"},
+            "b": {"type": "number"},
+        },
         tool=calculate,
     )
 

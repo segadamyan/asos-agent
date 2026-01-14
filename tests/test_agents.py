@@ -10,7 +10,11 @@ Run with:
 import pytest
 
 from agents.core.agent import Agent
-from agents.providers.models.base import GenerationBehaviorSettings, History, IntelligenceProviderConfig
+from agents.providers.models.base import (
+    GenerationBehaviorSettings,
+    History,
+    IntelligenceProviderConfig,
+)
 from orchestration.business_law_agent import BusinessLawAgent
 from orchestration.code_agent import CodeAgent
 from orchestration.math_agent import MathAgent

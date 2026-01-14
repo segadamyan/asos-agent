@@ -41,6 +41,7 @@ poetry run pytest --cov=src --cov-report=html
 - **test_orchestrator.py** - Tests for the orchestrator with tools
 - **test_delegation.py** - Tests for delegation system
 - **test_tool_calling.py** - Tests for tool calling functionality
+- **test_tools.py** - Tests for tools package (ToolsFactory and all tool functions)
 - **test_orchestrator_delegate.py** - Tests for orchestrator with built-in delegation
 - **test_responses_api.py** - Tests for OpenAI API compatibility
 - **test_hle.py** - Tests for HLE benchmark

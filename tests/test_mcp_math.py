@@ -124,7 +124,8 @@ async def test_symbolic_math_server():
         # Test symbolic_differentiate
         print("\n3. Testing 'symbolic_differentiate'...")
         result = await client.call_tool(
-            "symbolic_differentiate", {"expression": "x**3 + 2*x**2 - 5*x + 1", "variable": "x"}
+            "symbolic_differentiate",
+            {"expression": "x**3 + 2*x**2 - 5*x + 1", "variable": "x"},
         )
         print(f"   d/dx(x³ + 2x² - 5x + 1) = {result.content}")
 
@@ -136,7 +137,13 @@ async def test_symbolic_math_server():
         # Test symbolic_integrate (definite)
         print("\n5. Testing 'symbolic_integrate' (definite)...")
         result = await client.call_tool(
-            "symbolic_integrate", {"expression": "x**2", "variable": "x", "lower_bound": "0", "upper_bound": "1"}
+            "symbolic_integrate",
+            {
+                "expression": "x**2",
+                "variable": "x",
+                "lower_bound": "0",
+                "upper_bound": "1",
+            },
         )
         print(f"   ∫₀¹ x² dx = {result.content}")
 
@@ -148,7 +155,8 @@ async def test_symbolic_math_server():
         # Test symbolic_series
         print("\n7. Testing 'symbolic_series' (Taylor expansion)...")
         result = await client.call_tool(
-            "symbolic_series", {"expression": "exp(x)", "variable": "x", "point": "0", "order": 5}
+            "symbolic_series",
+            {"expression": "exp(x)", "variable": "x", "point": "0", "order": 5},
         )
         print(f"   e^x Taylor series: {result.content}")
 
@@ -254,14 +262,16 @@ async def test_math_agent_with_llm():
         # Test with derivative
         print("\n1. Testing calculus problem...")
         result = await agent.solve(
-            "What is the derivative of x³ + 2x² - 5x + 1? Use the symbolic_differentiate tool.", gbs=gbs
+            "What is the derivative of x³ + 2x² - 5x + 1? Use the symbolic_differentiate tool.",
+            gbs=gbs,
         )
         print(f"   Response: {result.content[:300]}...")
 
         # Test with integration
         print("\n2. Testing integration...")
         result = await agent.solve(
-            "Compute the definite integral of x² from 0 to 1 using the symbolic_integrate tool.", gbs=gbs
+            "Compute the definite integral of x² from 0 to 1 using the symbolic_integrate tool.",
+            gbs=gbs,
         )
         print(f"   Response: {result.content[:300]}...")
 
@@ -274,7 +284,9 @@ def run_test_in_subprocess(test_name: str) -> bool:
     script_path = os.path.abspath(__file__)
 
     result = subprocess.run(
-        [sys.executable, script_path, f"--test={test_name}"], capture_output=False, env=os.environ.copy()
+        [sys.executable, script_path, f"--test={test_name}"],
+        capture_output=False,
+        env=os.environ.copy(),
     )
 
     return result.returncode == 0
