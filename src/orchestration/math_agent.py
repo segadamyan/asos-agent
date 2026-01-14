@@ -167,7 +167,7 @@ class MathAgent(BaseExpertAgent):
                 configs = get_math_mcp_configs(use_basic_server, use_symbolic_server)
 
         self._mcp_configs = configs
-
+        # Initialize base expert - MCP is passed to super and handled by Agent
         native_tools = get_math_tools()
         if not enable_mcp:
             native_tools.extend([make_calculator_tool(), make_python_executor_tool()])
