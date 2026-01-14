@@ -97,7 +97,7 @@ def get_math_mcp_configs(use_basic_server: bool = True, use_symbolic_server: boo
     Returns:
         List of MCPServerConfig objects
     """
-    configs: List[MCPServerConfig] = []
+    configs = []
 
     if use_basic_server:
         configs.append(
@@ -159,7 +159,7 @@ class MathAgent(BaseExpertAgent):
                                If provided, overrides use_basic_server and use_symbolic_server.
         """
         # Determine MCP configs
-        configs: List[MCPServerConfig] = []
+        configs = []
         if enable_mcp:
             if mcp_server_configs is not None:
                 configs = mcp_server_configs
