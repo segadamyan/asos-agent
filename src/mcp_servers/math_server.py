@@ -399,7 +399,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "equation": {"type": "string", "description": "The equation to solve (e.g., '2x + 5 = 11')"},
+                    "equation": {
+                        "type": "string",
+                        "description": "The equation to solve (e.g., '2x + 5 = 11')",
+                    },
                     "variable": {
                         "type": "string",
                         "description": "The variable to solve for (default: 'x')",
@@ -415,7 +418,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "n": {"type": "integer", "description": "The non-negative integer to calculate factorial for"}
+                    "n": {
+                        "type": "integer",
+                        "description": "The non-negative integer to calculate factorial for",
+                    }
                 },
                 "required": ["n"],
             },
@@ -461,7 +467,12 @@ async def list_tools() -> list[Tool]:
             description="Calculate the square root of a number.",
             inputSchema={
                 "type": "object",
-                "properties": {"number": {"type": "number", "description": "The number to calculate square root for"}},
+                "properties": {
+                    "number": {
+                        "type": "number",
+                        "description": "The number to calculate square root for",
+                    }
+                },
                 "required": ["number"],
             },
         ),
@@ -471,7 +482,11 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "data": {"type": "array", "items": {"type": "number"}, "description": "List of numbers to analyze"}
+                    "data": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "List of numbers to analyze",
+                    }
                 },
                 "required": ["data"],
             },
@@ -532,7 +547,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "factorial":
             n = arguments.get("n", 0)
             if n < 0:
-                return [TextContent(type="text", text="Error: Factorial not defined for negative numbers")]
+                return [
+                    TextContent(
+                        type="text",
+                        text="Error: Factorial not defined for negative numbers",
+                    )
+                ]
             result = math.factorial(n)
             return [TextContent(type="text", text=f"{n}! = {result}")]
 
@@ -557,7 +577,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "sqrt":
             number = arguments.get("number", 0)
             if number < 0:
-                return [TextContent(type="text", text="Error: Cannot calculate square root of negative number")]
+                return [
+                    TextContent(
+                        type="text",
+                        text="Error: Cannot calculate square root of negative number",
+                    )
+                ]
             result = math.sqrt(number)
             return [TextContent(type="text", text=f"√{number} = {result}")]
 

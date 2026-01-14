@@ -59,7 +59,11 @@ from sympy import (
     tan,
     trigsimp,
 )
-from sympy.parsing.sympy_parser import implicit_multiplication_application, parse_expr, standard_transformations
+from sympy.parsing.sympy_parser import (
+    implicit_multiplication_application,
+    parse_expr,
+    standard_transformations,
+)
 
 # Create the MCP server
 server = Server("symbolic-math-server")
@@ -173,7 +177,11 @@ async def list_tools() -> list[Tool]:
                         "description": "The variable to differentiate with respect to (default: 'x')",
                         "default": "x",
                     },
-                    "order": {"type": "integer", "description": "Order of derivative (default: 1)", "default": 1},
+                    "order": {
+                        "type": "integer",
+                        "description": "Order of derivative (default: 1)",
+                        "default": 1,
+                    },
                 },
                 "required": ["expression"],
             },
@@ -184,7 +192,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "expression": {"type": "string", "description": "The expression to integrate (e.g., 'x**2')"},
+                    "expression": {
+                        "type": "string",
+                        "description": "The expression to integrate (e.g., 'x**2')",
+                    },
                     "variable": {
                         "type": "string",
                         "description": "The variable to integrate with respect to (default: 'x')",
@@ -208,9 +219,19 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "expression": {"type": "string", "description": "The expression (e.g., 'sin(x)/x')"},
-                    "variable": {"type": "string", "description": "The variable (default: 'x')", "default": "x"},
-                    "point": {"type": "string", "description": "The point to take limit at (e.g., '0', 'inf', '-inf')"},
+                    "expression": {
+                        "type": "string",
+                        "description": "The expression (e.g., 'sin(x)/x')",
+                    },
+                    "variable": {
+                        "type": "string",
+                        "description": "The variable (default: 'x')",
+                        "default": "x",
+                    },
+                    "point": {
+                        "type": "string",
+                        "description": "The point to take limit at (e.g., '0', 'inf', '-inf')",
+                    },
                     "direction": {
                         "type": "string",
                         "enum": ["+", "-", "+-"],
@@ -231,13 +252,21 @@ async def list_tools() -> list[Tool]:
                         "type": "string",
                         "description": "The expression to expand (e.g., 'exp(x)', 'sin(x)')",
                     },
-                    "variable": {"type": "string", "description": "The variable (default: 'x')", "default": "x"},
+                    "variable": {
+                        "type": "string",
+                        "description": "The variable (default: 'x')",
+                        "default": "x",
+                    },
                     "point": {
                         "type": "string",
                         "description": "Point to expand around (default: '0' for Maclaurin)",
                         "default": "0",
                     },
-                    "order": {"type": "integer", "description": "Number of terms (default: 6)", "default": 6},
+                    "order": {
+                        "type": "integer",
+                        "description": "Number of terms (default: 6)",
+                        "default": 6,
+                    },
                 },
                 "required": ["expression"],
             },
@@ -248,7 +277,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "expression": {"type": "string", "description": "The polynomial to factor (e.g., 'x**2 - 4')"}
+                    "expression": {
+                        "type": "string",
+                        "description": "The polynomial to factor (e.g., 'x**2 - 4')",
+                    }
                 },
                 "required": ["expression"],
             },
@@ -259,7 +291,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "expression": {"type": "string", "description": "The expression to expand (e.g., '(x + 1)**3')"}
+                    "expression": {
+                        "type": "string",
+                        "description": "The expression to expand (e.g., '(x + 1)**3')",
+                    }
                 },
                 "required": ["expression"],
             },
@@ -375,7 +410,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 lower_val = safe_parse(lower)
                 upper_val = safe_parse(upper)
                 result = integrate(expr, (var, lower_val, upper_val))
-                return [TextContent(type="text", text=f"Definite integral from {lower} to {upper}: {result}")]
+                return [
+                    TextContent(
+                        type="text",
+                        text=f"Definite integral from {lower} to {upper}: {result}",
+                    )
+                ]
             else:
                 result = integrate(expr, var)
                 return [TextContent(type="text", text=f"Indefinite integral: {result} + C")]
@@ -395,7 +435,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     result = left_lim
                 else:
                     return [
-                        TextContent(type="text", text=f"Limit does not exist (Left: {left_lim}, Right: {right_lim})")
+                        TextContent(
+                            type="text",
+                            text=f"Limit does not exist (Left: {left_lim}, Right: {right_lim})",
+                        )
                     ]
             else:
                 result = limit(expr, var, point, dir=direction)
@@ -423,11 +466,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             matrix_data = arguments.get("matrix", [])
             m = Matrix(matrix_data)
             if m.det() == 0:
-                return [TextContent(type="text", text="Error: Matrix is singular (determinant = 0), no inverse exists")]
+                return [
+                    TextContent(
+                        type="text",
+                        text="Error: Matrix is singular (determinant = 0), no inverse exists",
+                    )
+                ]
             result = m.inv()
             # Convert to float for nicer display
             result_float = [[float(x) if x.is_number else str(x) for x in row] for row in result.tolist()]
-            return [TextContent(type="text", text=f"Inverse matrix:\n{json.dumps(result_float, indent=2)}")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Inverse matrix:\n{json.dumps(result_float, indent=2)}",
+                )
+            ]
 
         elif name == "matrix_eigenvalues":
             matrix_data = arguments.get("matrix", [])
@@ -438,7 +491,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             result = {
                 "eigenvalues": {str(k): int(v) for k, v in eigenvals.items()},
                 "eigenvectors": [
-                    {"eigenvalue": str(ev[0]), "multiplicity": ev[1], "vectors": [str(v) for v in ev[2]]}
+                    {
+                        "eigenvalue": str(ev[0]),
+                        "multiplicity": ev[1],
+                        "vectors": [str(v) for v in ev[2]],
+                    }
                     for ev in eigenvects
                 ],
             }
