@@ -20,6 +20,7 @@ from agents.tools.base import ToolDefinition
 from agents.utils.logs.config import logger
 from orchestration.base_expert import BaseExpertAgent
 from tools.business_law_tools import get_business_law_tools
+from tools.wikipedia_tool import get_wikipedia_tools
 
 BUSINESS_LAW_AGENT_SYSTEM_PROMPT = """You are a specialized business, law, and professional ethics expert AI agent.
 
@@ -54,6 +55,7 @@ When answering multiple choice questions:
 Available Tools:
 - financial_calculator: NPV, IRR, financial ratios, present/future value calculations
 - statistical_calculator: Correlation, regression, hypothesis testing, econometric analysis
+- Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
 
 Subjects covered:
 - Business Ethics (corporate responsibility, stakeholder theory, ethical decision-making)
@@ -383,6 +385,7 @@ class BusinessLawAgent(BaseExpertAgent):
         )
         business_law_tools = [financial_calculator_tool, statistical_calculator_tool]
         business_law_tools.extend(get_business_law_tools())
+        business_law_tools.extend(get_wikipedia_tools())
 
         self.agent = Agent(
             name=name,
