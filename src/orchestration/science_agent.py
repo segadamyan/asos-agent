@@ -12,8 +12,8 @@ from agents.providers.models.base import (
     Message,
 )
 from orchestration.base_expert import BaseExpertAgent
-from orchestration.python_executor import make_python_executor_tool
 from tools.chemistry_tools import get_chemistry_tools
+from tools.execution_tools import get_execution_tools
 from tools.medical_tools import get_medical_tools
 from tools.physics_tools import get_physics_tools
 
@@ -79,9 +79,7 @@ class ScienceAgent(BaseExpertAgent):
         science_tools.extend(get_physics_tools())
         science_tools.extend(get_chemistry_tools())
         science_tools.extend(get_medical_tools())
-
-        # Add offline python executor for multi-step calculations
-        science_tools.append(make_python_executor_tool())
+        science_tools.extend(get_execution_tools())
 
         super().__init__(
             name=name,

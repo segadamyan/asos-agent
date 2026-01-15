@@ -1,18 +1,17 @@
 """
-Python Executor Tool (offline)
+Code Execution Tools
 
-Runs Python code in a restricted sandbox (no imports) with a timeout.
-Captures printed output and returns a `result` variable if provided.
+Safe, sandboxed code execution tools for mathematical and logical computations.
 """
 
 import ast
 import io
 import math
+import multiprocessing as mp
 import statistics
 from contextlib import redirect_stdout
 from dataclasses import dataclass
-import multiprocessing as mp
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from agents.tools.base import ToolDefinition
 
@@ -92,7 +91,6 @@ _ALLOWED_NODES = (
     ast.unaryop,
     ast.cmpop,
     ast.boolop,
-
 )
 
 _BANNED_NODES = (
@@ -215,6 +213,18 @@ def _worker(code: str, q: "mp.Queue[ExecResult]") -> None:
 
 
 async def python_executor(code: str, timeout_seconds: float = 2.0) -> Dict[str, Any]:
+    """
+    Executes offline Python code safely for multi-step math/logic.
+    No imports allowed. You can use `math` and `statistics`.
+    Use `print()` for intermediate steps. Set `result = ...` to return a value.
+
+    Args:
+        code: Python code to execute. Example: 'result = math.factorial(20)' or multi-line code.
+        timeout_seconds: Max execution time in seconds (default: 2.0).
+
+    Returns:
+        Dict with "stdout" and optionally "result" on success, or "error" on failure.
+    """
     src = (code or "").strip()
     if not src:
         return {"error": "Empty code."}
@@ -248,21 +258,24 @@ async def python_executor(code: str, timeout_seconds: float = 2.0) -> Dict[str, 
     return {"stdout": r.stdout, "error": r.error}
 
 
-def make_python_executor_tool() -> ToolDefinition:
-    return ToolDefinition(
-        name="python_executor",
-        description=(
-            "Executes offline Python code safely for multi-step math/logic. "
-            "No imports allowed. You can use `math` and `statistics`. "
-            "Use `print()` for intermediate steps. Set `result = ...` to return a value."
+def get_execution_tools() -> List[ToolDefinition]:
+    """Get all code execution tool definitions."""
+    return [
+        ToolDefinition(
+            name="python_executor",
+            description=(
+                "Executes offline Python code safely for multi-step math/logic. "
+                "No imports allowed. You can use `math` and `statistics`. "
+                "Use `print()` for intermediate steps. Set `result = ...` to return a value."
+            ),
+            args_description={
+                "code": "Python code to execute. Example: 'result = math.factorial(20)' or multi-line code.",
+                "timeout_seconds": "Max execution time in seconds (default: 2.0).",
+            },
+            args_schema={
+                "code": {"type": "string"},
+                "timeout_seconds": {"type": "number"},
+            },
+            tool=python_executor,
         ),
-        args_description={
-            "code": "Python code to execute. Example: 'result = math.factorial(20)' or multi-line code.",
-            "timeout_seconds": "Max execution time in seconds (default: 2.0).",
-        },
-        args_schema={
-            "code": {"type": "string"},
-            "timeout_seconds": {"type": "number"},
-        },
-        tool=python_executor,
-    )
+    ]

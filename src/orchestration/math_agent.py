@@ -20,8 +20,6 @@ from agents.providers.models.base import (
     Message,
 )
 from orchestration.base_expert import BaseExpertAgent
-from orchestration.calculator import make_calculator_tool
-from orchestration.python_executor import make_python_executor_tool
 from tools.math_tools import get_math_tools
 
 MATH_AGENT_SYSTEM_PROMPT = """You are a specialized mathematics expert AI agent.
@@ -168,9 +166,7 @@ class MathAgent(BaseExpertAgent):
 
         self._mcp_configs = configs
         # Initialize base expert - MCP is passed to super and handled by Agent
-        native_tools = get_math_tools()
-        if not enable_mcp:
-            native_tools.extend([make_calculator_tool(), make_python_executor_tool()])
+        native_tools = get_math_tools() if not enable_mcp else []
 
         super().__init__(
             name=name,

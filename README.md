@@ -104,7 +104,7 @@ asyncio.run(main())
 
 ### System Overview
 
-![ASOS Architecture](ASOS_Architecture.png)
+![ASOS Architecture](images/asos_architecture.png)
 
 The ASOS framework is organized into distinct layers:
 

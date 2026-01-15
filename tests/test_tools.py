@@ -34,6 +34,7 @@ from tools.computer_science_tools import (
     calculate_circuit_properties,
     convert_number_base,
 )
+from tools.execution_tools import python_executor
 from tools.factory import ToolsFactory
 from tools.humanities_tools import (
     calculate_astronomical_distance,
@@ -47,6 +48,7 @@ from tools.logic_philosophy_tools import (
 )
 from tools.math_tools import (
     calculate,
+    calculator,
     solve_quadratic,
     statistical_calc,
 )
@@ -169,6 +171,198 @@ async def test_statistical_calc_correlation():
     """Test correlation calculation."""
     result = await statistical_calc("correlation", data=[], sample1=[1, 2, 3, 4, 5], sample2=[2, 4, 6, 8, 10])
     assert "correlation" in result.lower() or "1" in result
+
+
+@pytest.mark.asyncio
+async def test_solve_quadratic():
+    """Test quadratic equation solving."""
+    result = await solve_quadratic(1, -5, 6)  # x² - 5x + 6 = 0, solutions: 2, 3
+    assert "2" in result and "3" in result
+
+
+@pytest.mark.asyncio
+async def test_calculator_basic_arithmetic():
+    """Test basic arithmetic with calculator."""
+    result = await calculator("2 + 2")
+    assert result.get("result") == 4
+
+    result = await calculator("10 * 5")
+    assert result.get("result") == 50
+
+    result = await calculator("100 / 4")
+    assert result.get("result") == 25
+
+
+@pytest.mark.asyncio
+async def test_calculator_with_functions():
+    """Test calculator with math functions."""
+    result = await calculator("sqrt(16)")
+    assert result.get("result") == 4
+
+    result = await calculator("abs(-5)")
+    assert result.get("result") == 5
+
+    result = await calculator("floor(3.7)")
+    assert result.get("result") == 3
+
+    result = await calculator("ceil(3.2)")
+    assert result.get("result") == 4
+
+
+@pytest.mark.asyncio
+async def test_calculator_with_constants():
+    """Test calculator with constants."""
+    result = await calculator("pi")
+    assert abs(result.get("result") - 3.14159) < 0.001
+
+    result = await calculator("e")
+    assert abs(result.get("result") - 2.71828) < 0.001
+
+
+@pytest.mark.asyncio
+async def test_calculator_complex_expression():
+    """Test calculator with complex expressions."""
+    result = await calculator("2*(3+4)**2")
+    assert result.get("result") == 98
+
+    result = await calculator("sqrt(16) + log10(100)")
+    assert result.get("result") == 6
+
+
+@pytest.mark.asyncio
+async def test_calculator_trigonometry():
+    """Test calculator with trigonometric functions."""
+    result = await calculator("sin(0)")
+    assert abs(result.get("result")) < 0.001
+
+    result = await calculator("cos(0)")
+    assert abs(result.get("result") - 1) < 0.001
+
+
+@pytest.mark.asyncio
+async def test_calculator_error_handling():
+    """Test calculator error handling."""
+    result = await calculator("1 / 0")
+    assert "error" in result
+
+    result = await calculator("")
+    assert "error" in result
+
+    result = await calculator("import os")  # Should fail
+    assert "error" in result
+
+
+@pytest.mark.asyncio
+async def test_python_executor_basic():
+    """Test basic Python execution."""
+    result = await python_executor("result = 2 + 2")
+    assert result.get("result") == 4
+
+
+@pytest.mark.asyncio
+async def test_python_executor_with_math():
+    """Test Python executor with math module."""
+    result = await python_executor("import math\nresult = math.factorial(5)")
+    # Should fail because imports are not allowed
+    assert "error" in result
+
+    # This should work - math is pre-imported
+    result = await python_executor("result = math.factorial(5)")
+    assert result.get("result") == 120
+
+
+@pytest.mark.asyncio
+async def test_python_executor_with_statistics():
+    """Test Python executor with statistics module."""
+    code = """
+data = [1, 2, 3, 4, 5]
+result = statistics.mean(data)
+"""
+    result = await python_executor(code)
+    assert result.get("result") == 3
+
+
+@pytest.mark.asyncio
+async def test_python_executor_with_loops():
+    """Test Python executor with loops."""
+    code = """
+total = 0
+for i in range(1, 11):
+    total += i
+result = total
+"""
+    result = await python_executor(code)
+    assert result.get("result") == 55
+
+
+@pytest.mark.asyncio
+async def test_python_executor_with_print():
+    """Test Python executor with print statements."""
+    code = """
+print("Step 1: Calculate factorial")
+result = math.factorial(5)
+print("Result:", result)
+"""
+    result = await python_executor(code)
+    assert result.get("result") == 120
+    assert "Step 1" in result.get("stdout", "")
+
+
+@pytest.mark.asyncio
+async def test_python_executor_complex_computation():
+    """Test Python executor with complex multi-step computation."""
+    code = """
+# Calculate combinations
+n = 10
+k = 3
+result = math.comb(n, k)
+"""
+    result = await python_executor(code)
+    assert result.get("result") == 120
+
+
+@pytest.mark.asyncio
+async def test_python_executor_list_comprehension():
+    """Test Python executor with list comprehensions."""
+    code = """
+squares = [x**2 for x in range(1, 6)]
+result = sum(squares)
+"""
+    result = await python_executor(code)
+    assert result.get("result") == 55  # 1 + 4 + 9 + 16 + 25
+
+
+@pytest.mark.asyncio
+async def test_python_executor_error_handling():
+    """Test Python executor error handling."""
+    # Empty code
+    result = await python_executor("")
+    assert "error" in result
+
+    # Forbidden imports
+    result = await python_executor("import os")
+    assert "error" in result
+
+    # Forbidden function
+    result = await python_executor("eval('2+2')")
+    assert "error" in result
+
+    # Division by zero
+    result = await python_executor("result = 1 / 0")
+    assert "error" in result
+
+
+@pytest.mark.asyncio
+async def test_python_executor_timeout():
+    """Test Python executor timeout."""
+    code = """
+# Infinite loop - should timeout
+while True:
+    pass
+"""
+    result = await python_executor(code, timeout_seconds=1)
+    assert "error" in result
+    assert "timed out" in result.get("error", "").lower()
 
 
 @pytest.mark.asyncio
