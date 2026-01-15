@@ -104,26 +104,204 @@ asyncio.run(main())
 
 ### System Overview
 
+![ASOS Architecture](ASOS_Architecture.png)
+
+The ASOS framework is organized into distinct layers:
+
+- **Application Layer**: User interface and application logic
+- **Orchestration Layer**: Task coordination and expert agent management
+- **Agents Layer**: Core agent functionality with tool execution
+- **Tools Layer**: 40+ specialized tools across 8 categories
+- **Provider Layer**: Multi-provider LLM integration (OpenAI, Anthropic, Google)
+- **MCP Layer**: Model Context Protocol for dynamic tool discovery
+- **Benchmarks Layer**: Evaluation on MMLU-Redux and HLE datasets
+
+## 🛠️ Tools System
+
+ASOS provides **40+ specialized tools** organized into **8 categories**, enabling agents to perform complex calculations, simulations, and analysis across multiple domains.
+
+### Tools Factory
+
+The `ToolsFactory` provides centralized access to all tools:
+
+```python
+from tools.factory import ToolsFactory
+
+# Get all tools
+all_tools = ToolsFactory.get_all_tools()
+
+# Get tools by category
+math_tools = ToolsFactory.get_tools_by_category(["math"])
+science_tools = ToolsFactory.get_tools_by_category(["physics", "chemistry"])
+
+# Get multiple categories
+tools = ToolsFactory.get_tools_by_category(["math", "physics", "chemistry"])
 ```
-ASOS Agent Framework
-├── Agents Layer
-│   ├── Agent (Core agent with LLM communication)
-│   ├── BaseExpertAgent (Abstract class for specialists)
-│   └── Tool Execution System
-├── MCP Layer (Model Context Protocol)
-│   ├── MCPClient (stdio transport)
-│   ├── MCPDiscovery (Tool discovery & conversion)
-│   └── MCP Servers (Basic Math, Symbolic Math)
-├── Orchestration Layer
-│   ├── Orchestrator (Task coordinator)
-│   └── Expert Agents (Math, Science, Code, BusinessLaw)
-├── Provider Layer
-│   ├── OpenAI Provider
-│   ├── Anthropic Provider
-│   └── Gemini Provider
-└── Benchmarks Layer
-    ├── MMLU-Redux
-    └── HLE (Humanity's Last Exam)
+
+### Available Tool Categories
+
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Math** | 7 tools | Arithmetic, calculus, statistics, equation solving |
+| **Physics** | 6 tools | Mechanics, energy, momentum, wave properties |
+| **Chemistry** | 6 tools | Molar mass, pH, gas laws, stoichiometry |
+| **Computer Science** | 5 tools | Binary operations, circuits, data structures |
+| **Medical** | 5 tools | BMI, dosage, heart rate, fluid requirements |
+| **Business/Law** | 6 tools | Financial ratios, NPV, IRR, econometrics |
+| **Logic/Philosophy** | 5 tools | Logical statements, fallacies, truth tables |
+| **Humanities** | 4 tools | Geography, astronomy, time zones |
+| **Execution** | 1 tool | Safe Python code execution |
+
+### Math Tools
+
+```python
+from tools.math_tools import get_math_tools
+
+# Available tools:
+# - calculator: Safe expression evaluator (2*(3+4)**2, sqrt(16), sin(pi/2))
+# - calculate: Arithmetic, trigonometry, logarithms
+# - statistical_calc: Mean, median, std_dev, variance, correlation, t-test
+# - solve_quadratic: Solve ax² + bx + c = 0
+# - calculate_derivative: Symbolic differentiation
+# - calculate_integral: Definite/indefinite integration
+# - python_executor: Multi-step Python code execution
+```
+
+**Example Usage:**
+
+```python
+from tools.math_tools import calculator, python_executor
+
+# Quick calculation
+result = await calculator("sqrt(144) + log10(1000)")
+# Returns: {"result": 15.0}
+
+# Multi-step computation
+code = """
+import math
+n = 10
+k = 3
+result = math.comb(n, k)
+print(f"C({n},{k}) = {result}")
+"""
+result = await python_executor(code)
+# Returns: {"result": 120, "stdout": "C(10,3) = 120\n"}
+```
+
+### Physics Tools
+
+```python
+from tools.physics_tools import get_physics_tools
+
+# Available tools:
+# - calculate_force: F = ma
+# - calculate_kinematics: Motion equations (v, s, a, t)
+# - calculate_energy: Kinetic, potential, elastic energy
+# - calculate_momentum: Linear and angular momentum
+# - calculate_wave_properties: Frequency, wavelength, speed
+# - calculate_thermodynamics: Heat transfer, ideal gas
+```
+
+### Chemistry Tools
+
+```python
+from tools.chemistry_tools import get_chemistry_tools
+
+# Available tools:
+# - calculate_molar_mass: Molecular weight
+# - calculate_ph: pH and pOH calculations
+# - calculate_concentration: Molarity, dilution
+# - calculate_ideal_gas_law: PV = nRT
+# - balance_equation: Chemical equation balancing
+# - calculate_stoichiometry: Reaction quantities
+```
+
+### Python Executor Tool
+
+The `python_executor` tool provides safe, sandboxed Python code execution:
+
+**Features:**
+- ✅ Pre-imported `math` and `statistics` modules
+- ✅ Multi-step computations with loops and conditionals
+- ✅ Print statements for debugging
+- ✅ List comprehensions and data structures
+- ✅ 2-second timeout protection
+- ❌ No imports allowed (security)
+- ❌ No file I/O or dangerous operations
+
+**Example:**
+
+```python
+from tools.execution_tools import python_executor
+
+code = """
+# Calculate factorial and combinations
+factorial_10 = math.factorial(10)
+combinations = math.comb(52, 5)
+
+print(f"10! = {factorial_10}")
+print(f"C(52,5) = {combinations}")
+
+result = {
+    "factorial": factorial_10,
+    "combinations": combinations
+}
+"""
+
+output = await python_executor(code, timeout_seconds=2.0)
+# Returns:
+# {
+#   "result": {"factorial": 3628800, "combinations": 2598960},
+#   "stdout": "10! = 3628800\nC(52,5) = 2598960\n"
+# }
+```
+
+### Calculator Tool
+
+The `calculator` tool provides safe expression evaluation:
+
+**Features:**
+- ✅ Arithmetic: +, -, *, /, //, %, **
+- ✅ Functions: sqrt, abs, round, floor, ceil, log, log10, exp
+- ✅ Trigonometry: sin, cos, tan
+- ✅ Constants: pi, e
+- ❌ No imports or dangerous operations
+
+**Example:**
+
+```python
+from tools.math_tools import calculator
+
+# Simple calculation
+await calculator("2 + 2")  # {"result": 4}
+
+# Complex expression
+await calculator("2*(3+4)**2 + sqrt(16)")  # {"result": 102.0}
+
+# With functions and constants
+await calculator("sin(pi/2) + cos(0)")  # {"result": 2.0}
+```
+
+### Using Tools with Agents
+
+```python
+from agents.core.agent import Agent
+from tools.factory import ToolsFactory
+
+# Create agent with specific tool categories
+tools = ToolsFactory.get_tools_by_category(["math", "physics"])
+
+agent = Agent(
+    name="ScienceAgent",
+    system_prompt="You are a science expert with mathematical tools.",
+    history=History(),
+    ip_config=IntelligenceProviderConfig(provider_name="openai", version="gpt-4o"),
+    tools=tools
+)
+
+response = await agent.ask(
+    "Calculate the kinetic energy of a 5kg object moving at 10 m/s"
+)
 ```
 
 ## 🧩 Core Components
