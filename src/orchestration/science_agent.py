@@ -12,6 +12,7 @@ from agents.providers.models.base import (
     Message,
 )
 from orchestration.base_expert import BaseExpertAgent
+from orchestration.python_executor import make_python_executor_tool
 from tools.chemistry_tools import get_chemistry_tools
 from tools.medical_tools import get_medical_tools
 from tools.physics_tools import get_physics_tools
@@ -38,6 +39,10 @@ Guidelines:
 - Show calculations or derivations when relevant
 - Acknowledge limitations of current scientific understanding
 - Distinguish between established facts and theoretical models
+
+Tool usage:
+- Use python_executor for multi-step scientific calculations, numerical checks, or quick simulations.
+- Include units and show intermediate steps when useful.
 
 When answering:
 - Start with a clear, direct answer
@@ -74,6 +79,9 @@ class ScienceAgent(BaseExpertAgent):
         science_tools.extend(get_physics_tools())
         science_tools.extend(get_chemistry_tools())
         science_tools.extend(get_medical_tools())
+
+        # Add offline python executor for multi-step calculations
+        science_tools.append(make_python_executor_tool())
 
         super().__init__(
             name=name,

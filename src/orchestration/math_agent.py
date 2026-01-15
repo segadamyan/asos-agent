@@ -20,6 +20,8 @@ from agents.providers.models.base import (
     Message,
 )
 from orchestration.base_expert import BaseExpertAgent
+from orchestration.calculator import make_calculator_tool
+from orchestration.python_executor import make_python_executor_tool
 from tools.math_tools import get_math_tools
 
 MATH_AGENT_SYSTEM_PROMPT = """You are a specialized mathematics expert AI agent.
@@ -48,6 +50,10 @@ When solving problems:
 - Include units when applicable
 
 IMPORTANT: When answering multiple choice questions, provide the correct answer letter clearly and include a brief explanation.
+
+Tool usage:
+- Use calculator for quick single-expression arithmetic.
+- Use python_executor for multi-step computations (loops, lists, statistics, factorial/comb/perm).
 
 You have access to mathematical tools that can help you with calculations:
 
@@ -161,14 +167,17 @@ class MathAgent(BaseExpertAgent):
                 configs = get_math_mcp_configs(use_basic_server, use_symbolic_server)
 
         self._mcp_configs = configs
-
         # Initialize base expert - MCP is passed to super and handled by Agent
+        native_tools = get_math_tools()
+        if not enable_mcp:
+            native_tools.extend([make_calculator_tool(), make_python_executor_tool()])
+
         super().__init__(
             name=name,
             system_prompt=MATH_AGENT_SYSTEM_PROMPT,
             ip_config=ip_config,
             gbs=gbs,
-            tools=get_math_tools() if not enable_mcp else [],  # Use native tools if MCP disabled
+            tools=native_tools if not enable_mcp else [],
             default_temperature=0.3,
             enable_mcp=enable_mcp,
             mcp_server_configs=configs,
