@@ -16,6 +16,8 @@ from tools.chemistry_tools import get_chemistry_tools
 from tools.execution_tools import get_execution_tools
 from tools.medical_tools import get_medical_tools
 from tools.physics_tools import get_physics_tools
+from tools.wikipedia_tool import get_wikipedia_tools
+
 
 SCIENCE_AGENT_SYSTEM_PROMPT = """You are a specialized science expert AI agent.
 
@@ -41,6 +43,7 @@ Guidelines:
 - Distinguish between established facts and theoretical models
 
 Tool usage:
+- Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
 - Use python_executor for multi-step scientific calculations, numerical checks, or quick simulations.
 - Include units and show intermediate steps when useful.
 
@@ -80,6 +83,7 @@ class ScienceAgent(BaseExpertAgent):
         science_tools.extend(get_chemistry_tools())
         science_tools.extend(get_medical_tools())
         science_tools.extend(get_execution_tools())
+        science_tools.extend(get_wikipedia_tools())
 
         super().__init__(
             name=name,
