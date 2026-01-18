@@ -17,6 +17,7 @@ from tools.execution_tools import get_execution_tools
 from tools.medical_tools import get_medical_tools
 from tools.physics_tools import get_physics_tools
 from tools.wikipedia_tool import get_wikipedia_tools
+from tools.openalex import get_openalex_tools
 
 
 SCIENCE_AGENT_SYSTEM_PROMPT = """You are a specialized science expert AI agent.
@@ -46,6 +47,8 @@ Tool usage:
 - Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
 - Use python_executor for multi-step scientific calculations, numerical checks, or quick simulations.
 - Include units and show intermediate steps when useful.
+- Use openalex for academic references related to mathematical concepts (not for calculations).
+
 
 When answering:
 - Start with a clear, direct answer
@@ -84,6 +87,7 @@ class ScienceAgent(BaseExpertAgent):
         science_tools.extend(get_medical_tools())
         science_tools.extend(get_execution_tools())
         science_tools.extend(get_wikipedia_tools())
+        science_tools.extend(get_openalex_tools())
 
         super().__init__(
             name=name,

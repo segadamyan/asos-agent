@@ -22,6 +22,7 @@ from agents.providers.models.base import (
 from orchestration.base_expert import BaseExpertAgent
 from tools.math_tools import get_math_tools
 from tools.wikipedia_tool import get_wikipedia_tools
+from tools.openalex import get_openalex_tools
 
 MATH_AGENT_SYSTEM_PROMPT = """You are a specialized mathematics expert AI agent.
 
@@ -54,6 +55,7 @@ Tool usage:
 - Use calculator for quick single-expression arithmetic.
 - Use python_executor for multi-step computations (loops, lists, statistics, factorial/comb/perm).
 - Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
+- Use openalex for academic references related to mathematical concepts (not for calculations).
 
 You have access to mathematical tools that can help you with calculations:
 
@@ -168,12 +170,12 @@ class MathAgent(BaseExpertAgent):
 
         self._mcp_configs = configs
         # Initialize base expert - MCP is passed to super and handled by Agent
-        native_tools = (get_math_tools() + get_wikipedia_tools() if not enable_mcp
-                         else [])
+        native_tools = []
 
         if not enable_mcp:
             native_tools.extend(get_math_tools())
             native_tools.extend(get_wikipedia_tools())
+            native_tools.extend(get_openalex_tools())
 
         super().__init__(
             name=name,
