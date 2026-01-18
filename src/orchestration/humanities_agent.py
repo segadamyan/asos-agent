@@ -58,7 +58,8 @@ When answering multiple choice questions:
 
 Available Tools:
 - formal_logic_evaluator: Validate syllogisms, generate truth tables, check logical equivalence, evaluate argument validity
-
+- Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
+- Use openalex for academic references related to mathematical concepts (not for calculations).
 
 Subjects covered:
 - Philosophy (epistemology, ethics, metaphysics, political philosophy)
