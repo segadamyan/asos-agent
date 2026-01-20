@@ -20,6 +20,8 @@ from agents.utils.logs.config import logger
 from orchestration.base_expert import BaseExpertAgent
 from tools.humanities_tools import get_humanities_tools
 from tools.logic_philosophy_tools import get_logic_philosophy_tools
+from tools.openalex import get_openalex_tools
+from tools.wikipedia_tool import get_wikipedia_tools
 
 HUMANITIES_AGENT_SYSTEM_PROMPT = """You are a specialized humanities and social sciences expert AI agent.
 
@@ -56,6 +58,8 @@ When answering multiple choice questions:
 
 Available Tools:
 - formal_logic_evaluator: Validate syllogisms, generate truth tables, check logical equivalence, evaluate argument validity
+- Use wikipedia for definitions, background knowledge, and factual context (not for calculations).
+- Use openalex for academic references related to mathematical concepts (not for calculations).
 
 Subjects covered:
 - Philosophy (epistemology, ethics, metaphysics, political philosophy)
@@ -278,6 +282,8 @@ class HumanitiesAgent(BaseExpertAgent):
         humanities_tools = [formal_logic_tool]
         humanities_tools.extend(get_humanities_tools())
         humanities_tools.extend(get_logic_philosophy_tools())
+        humanities_tools.extend(get_wikipedia_tools())
+        humanities_tools.extend(get_openalex_tools())
 
         self.agent = Agent(
             name=name,
