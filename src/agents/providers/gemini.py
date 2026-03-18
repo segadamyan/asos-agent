@@ -419,6 +419,14 @@ class GeminiUsageLogEntry(BaseUsageLogEntry):
     model_version: str
     input_tokens: int
     output_tokens: int
+    cached_tokens: int = 0
+
+    def token_details(self) -> dict:
+        return {
+            "input_tokens": self.input_tokens,
+            "cached_tokens": self.cached_tokens,
+            "output_tokens": self.output_tokens,
+        }
 
     def calculate_cost(self) -> float:
         model_config = model_registry.get_model("gemini", self.model_version) or model_registry.find_model_by_alias(

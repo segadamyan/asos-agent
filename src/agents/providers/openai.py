@@ -329,3 +329,10 @@ class OpenAIUsageLogEntry(BaseUsageLogEntry):
         cached_tokens_cost = self.cached_tokens * (pricing.cached_input_per_1m or 0)
         output_tokens_cost = self.output_tokens * pricing.output_per_1m
         return (input_tokens_cost + cached_tokens_cost + output_tokens_cost) / 1_000_000
+
+    def token_details(self) -> dict:
+        return {
+            "input_tokens": self.input_tokens,
+            "cached_tokens": self.cached_tokens,
+            "output_tokens": self.output_tokens,
+        }
